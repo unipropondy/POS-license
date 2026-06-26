@@ -12,12 +12,8 @@ app.use(express.json());
 
 console.log("ENV CHECK 👉", process.env.DB_SERVER);
 
-// ================= STATIC FILES =================
-const path = require("path");
-app.use(express.static(path.join(__dirname, "../build")));
-
 // ================= DYNAMIC DB MIDDLEWARE =================
-app.use("/api", async (req, res, next) => {
+app.use(async (req, res, next) => {
   try {
     const dbName = req.headers["x-db-name"] || process.env.DB_NAME;
 

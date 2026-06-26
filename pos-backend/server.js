@@ -12,8 +12,12 @@ app.use(express.json());
 
 console.log("ENV CHECK 👉", process.env.DB_SERVER);
 
+// ================= STATIC FILES =================
+const path = require("path");
+app.use(express.static(path.join(__dirname, "../build")));
+
 // ================= DYNAMIC DB MIDDLEWARE =================
-app.use(async (req, res, next) => {
+app.use("/api", async (req, res, next) => {
   try {
     const dbName = req.headers["x-db-name"] || process.env.DB_NAME;
 
@@ -28,10 +32,6 @@ app.use(async (req, res, next) => {
     res.status(500).json({ success: false, message: "Database connection failed", error: err.message });
   }
 });
-
-// ================= STATIC FILES & API ROOT =================
-const path = require("path");
-app.use(express.static(path.join(__dirname, "../build")));
 
 app.get("/api-status", (req, res) => {
   res.status(200).send("API Running 🚀");

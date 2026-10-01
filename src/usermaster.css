@@ -234,6 +234,69 @@
 }
 
 /* ============================================================
+   TABS
+============================================================ */
+.um-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.um-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 14px 20px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  margin-bottom: -1px;
+  letter-spacing: 0.2px;
+}
+
+.um-tab:hover {
+  color: var(--accent);
+  background: rgba(234, 88, 12, 0.04);
+}
+
+.um-tab-active {
+  color: var(--accent) !important;
+  border-bottom-color: var(--accent) !important;
+  background: rgba(234, 88, 12, 0.06) !important;
+}
+
+.um-tab svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+.um-tab-active svg,
+.um-tab:hover svg {
+  opacity: 1;
+}
+
+/* Spin animation for loading state */
+@keyframes um-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.um-spin {
+  display: inline-block;
+  animation: um-spin 1s linear infinite;
+}
+
+/* ============================================================
    TABLE SECTION
 ============================================================ */
 .um-table-section {

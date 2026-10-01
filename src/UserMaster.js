@@ -5,11 +5,21 @@ import { BASE_URL } from "./config/api";
 
 export default function UserMaster({ dbName }) {
 
+  // ─── TAB STATE ─────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("username"); // "username" | "companycode"
+
+  // ─── USER NAME TAB STATE ────────────────────────────────────────────────────
   const [users, setUsers] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [userGroups, setUserGroups] = useState([]);
   const [search, setSearch] = useState("");
+
+  // ─── COMPANY CODE TAB STATE ─────────────────────────────────────────────────
+  const [branches, setBranches] = useState([]);
+  const [branchSearch, setBranchSearch] = useState("");
+  const [branchLoading, setBranchLoading] = useState(false);
+  const [branchError, setBranchError] = useState(null);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.UserId || null;
@@ -23,12 +33,21 @@ export default function UserMaster({ dbName }) {
 
   const [form, setForm] = useState(emptyForm);
   const API = `${BASE_URL}/api/usermaster`;
+  const BRANCH_API = `${BASE_URL}/api/branchdatabasemaster`;
 
   useEffect(() => {
     fetchUsers();
     fetchUserGroups();
   }, []);
 
+  // Fetch branches when Company Code tab is activated for the first time
+  useEffect(() => {
+    if (activeTab === "companycode" && branches.length === 0) {
+      fetchBranches();
+    }
+  }, [activeTab]);
+
+  // ─── USER NAME TAB FUNCTIONS ────────────────────────────────────────────────
   const generateUserCode = () => {
     const timePart = Date.now().toString().slice(-7);
     const randomPart = Math.floor(Math.random() * 900 + 100);
@@ -113,6 +132,27 @@ export default function UserMaster({ dbName }) {
   const activeCount = users.filter(u => !u.IsDisabled).length;
   const waiterCount = users.filter(u => u.isWaiter).length;
 
+  // ─── COMPANY CODE TAB FUNCTIONS ─────────────────────────────────────────────
+  const fetchBranches = async () => {
+    setBranchLoading(true);
+    setBranchError(null);
+    try {
+      // BranchDatabaseMaster lives in the UNIPRO DB; backend uses fixed pool
+      const res = await axios.get(BRANCH_API, { headers: { 'x-db-name': dbName } });
+      setBranches(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+      setBranchError("Failed to load company codes. Please try again.");
+    } finally {
+      setBranchLoading(false);
+    }
+  };
+
+  const filteredBranches = branches.filter(b =>
+    b.BranchCode?.toLowerCase().includes(branchSearch.toLowerCase()) ||
+    b.DatabaseName?.toLowerCase().includes(branchSearch.toLowerCase())
+  );
+
   return (
     <div className="um-container">
       {/* NAVBAR */}
@@ -126,119 +166,249 @@ export default function UserMaster({ dbName }) {
             <span className="um-db-name">{dbName || "UNKNOWN"}</span>
           </div>
           <button className="um-change-btn" onClick={handleChangeDB}>CHANGE</button>
-          <button className="um-add-btn" onClick={() => {
-            setForm({ ...emptyForm, UserCode: generateUserCode() });
-            setEditIndex(null); setShowModal(true);
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            New User
-          </button>
+          {activeTab === "username" && (
+            <button className="um-add-btn" onClick={() => {
+              setForm({ ...emptyForm, UserCode: generateUserCode() });
+              setEditIndex(null); setShowModal(true);
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              New User
+            </button>
+          )}
         </div>
       </nav>
 
       {/* STATS */}
       <div className="um-stats">
-        <div className="um-stat-card">
-          <div className="um-stat-icon purple">👥</div>
-          <div>
-            <div className="um-stat-value">{users.length}</div>
-            <div className="um-stat-label">Total Users</div>
-          </div>
-        </div>
-        <div className="um-stat-card">
-          <div className="um-stat-icon green">✅</div>
-          <div>
-            <div className="um-stat-value">{activeCount}</div>
-            <div className="um-stat-label">Active Users</div>
-          </div>
-        </div>
-        <div className="um-stat-card">
-          <div className="um-stat-icon gold">🍽️</div>
-          <div>
-            <div className="um-stat-value">{waiterCount}</div>
-            <div className="um-stat-label">Waiters</div>
-          </div>
-        </div>
+        {activeTab === "username" ? (
+          <>
+            <div className="um-stat-card">
+              <div className="um-stat-icon purple">👥</div>
+              <div>
+                <div className="um-stat-value">{users.length}</div>
+                <div className="um-stat-label">Total Users</div>
+              </div>
+            </div>
+            <div className="um-stat-card">
+              <div className="um-stat-icon green">✅</div>
+              <div>
+                <div className="um-stat-value">{activeCount}</div>
+                <div className="um-stat-label">Active Users</div>
+              </div>
+            </div>
+            <div className="um-stat-card">
+              <div className="um-stat-icon gold">🍽️</div>
+              <div>
+                <div className="um-stat-value">{waiterCount}</div>
+                <div className="um-stat-label">Waiters</div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="um-stat-card">
+              <div className="um-stat-icon purple">🏢</div>
+              <div>
+                <div className="um-stat-value">{branches.length}</div>
+                <div className="um-stat-label">Total Companies</div>
+              </div>
+            </div>
+            <div className="um-stat-card">
+              <div className="um-stat-icon green">✅</div>
+              <div>
+                <div className="um-stat-value">{branches.length}</div>
+                <div className="um-stat-label">Active Companies</div>
+              </div>
+            </div>
+            <div className="um-stat-card">
+              <div className="um-stat-icon gold">🗄️</div>
+              <div>
+                <div className="um-stat-value">{filteredBranches.length}</div>
+                <div className="um-stat-label">Filtered Results</div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* TABLE */}
+      {/* TABLE SECTION */}
       <div className="um-table-section">
         <div className="um-table-card">
-          <div className="um-table-header">
-            <div className="um-table-title">
-              All Users
-              <span className="um-user-count">{filtered.length}</span>
-            </div>
-            <div className="um-search-box">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input
-                className="um-search-input"
-                placeholder="Search users..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
+
+          {/* ── TABS ── */}
+          <div className="um-tabs">
+            <button
+              className={`um-tab${activeTab === "username" ? " um-tab-active" : ""}`}
+              onClick={() => setActiveTab("username")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+              User Name
+            </button>
+            <button
+              className={`um-tab${activeTab === "companycode" ? " um-tab-active" : ""}`}
+              onClick={() => setActiveTab("companycode")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+              Company Code
+            </button>
           </div>
 
-          <table className="um-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>User Code</th>
-                <th>User Name</th>
-                <th>From Date</th>
-                <th>To Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan="6">
-                    <div className="um-empty">
-                      <div className="um-empty-icon">👤</div>
-                      <div className="um-empty-text">No users found</div>
-                      <div className="um-empty-sub">Click "New User" to add your first user</div>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((u, i) => (
-                  <tr key={u.UserId}>
-                    <td style={{ color: 'var(--text-dim)', fontSize: '12px', width: '48px' }}>{i + 1}</td>
-                    <td><span className="um-code-chip">{u.UserCode}</span></td>
-                    <td><span className="um-username">{u.UserName}</span></td>
-                    <td>
-                      {fmt(u.FromDate)
-                        ? <span className="um-date-pill">📅 {fmt(u.FromDate)}</span>
-                        : <span className="um-date-pill empty">—</span>}
-                    </td>
-                    <td>
-                      {fmt(u.ToDate)
-                        ? <span className="um-date-pill">📅 {fmt(u.ToDate)}</span>
-                        : <span className="um-date-pill empty">—</span>}
-                    </td>
-                    <td>
-                      <div className="um-actions">
-                        <button className="um-edit-btn" onClick={() => openEdit(u, i)}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                          Edit
-                        </button>
-                        <button className="um-del-btn" onClick={() => deleteUser(u.UserCode)}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+          {/* ── USER NAME TAB CONTENT ── */}
+          {activeTab === "username" && (
+            <>
+              <div className="um-table-header">
+                <div className="um-table-title">
+                  All Users
+                  <span className="um-user-count">{filtered.length}</span>
+                </div>
+                <div className="um-search-box">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input
+                    className="um-search-input"
+                    placeholder="Search users..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <table className="um-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>User Code</th>
+                    <th>User Name</th>
+                    <th>From Date</th>
+                    <th>To Date</th>
+                    <th>Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan="6">
+                        <div className="um-empty">
+                          <div className="um-empty-icon">👤</div>
+                          <div className="um-empty-text">No users found</div>
+                          <div className="um-empty-sub">Click "New User" to add your first user</div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((u, i) => (
+                      <tr key={u.UserId}>
+                        <td style={{ color: 'var(--text-dim)', fontSize: '12px', width: '48px' }}>{i + 1}</td>
+                        <td><span className="um-code-chip">{u.UserCode}</span></td>
+                        <td><span className="um-username">{u.UserName}</span></td>
+                        <td>
+                          {fmt(u.FromDate)
+                            ? <span className="um-date-pill">📅 {fmt(u.FromDate)}</span>
+                            : <span className="um-date-pill empty">—</span>}
+                        </td>
+                        <td>
+                          {fmt(u.ToDate)
+                            ? <span className="um-date-pill">📅 {fmt(u.ToDate)}</span>
+                            : <span className="um-date-pill empty">—</span>}
+                        </td>
+                        <td>
+                          <div className="um-actions">
+                            <button className="um-edit-btn" onClick={() => openEdit(u, i)}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              Edit
+                            </button>
+                            <button className="um-del-btn" onClick={() => deleteUser(u.UserCode)}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {/* ── COMPANY CODE TAB CONTENT ── */}
+          {activeTab === "companycode" && (
+            <>
+              <div className="um-table-header">
+                <div className="um-table-title">
+                  Company Codes
+                  <span className="um-user-count">{filteredBranches.length}</span>
+                </div>
+                <div className="um-search-box">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input
+                    className="um-search-input"
+                    placeholder="Search company codes..."
+                    value={branchSearch}
+                    onChange={e => setBranchSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <table className="um-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Branch Code</th>
+                    <th>Database Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {branchLoading ? (
+                    <tr>
+                      <td colSpan="3">
+                        <div className="um-empty">
+                          <div className="um-empty-icon um-spin">⏳</div>
+                          <div className="um-empty-text">Loading company codes...</div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : branchError ? (
+                    <tr>
+                      <td colSpan="3">
+                        <div className="um-empty">
+                          <div className="um-empty-icon">⚠️</div>
+                          <div className="um-empty-text">{branchError}</div>
+                          <button className="um-save-btn" style={{ marginTop: 12 }} onClick={fetchBranches}>
+                            Retry
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredBranches.length === 0 ? (
+                    <tr>
+                      <td colSpan="3">
+                        <div className="um-empty">
+                          <div className="um-empty-icon">🏢</div>
+                          <div className="um-empty-text">No company codes found</div>
+                          <div className="um-empty-sub">
+                            {branchSearch ? "Try a different search term." : "No records in BranchDatabaseMaster."}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredBranches.map((b, i) => (
+                      <tr key={b.BranchCode}>
+                        <td style={{ color: 'var(--text-dim)', fontSize: '12px', width: '48px' }}>{i + 1}</td>
+                        <td><span className="um-code-chip">{b.BranchCode}</span></td>
+                        <td><span className="um-username">{b.DatabaseName}</span></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </>
+          )}
+
         </div>
       </div>
 
-      {/* MODAL */}
+      {/* MODAL (User Name tab only) */}
       {showModal && (
         <div className="um-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="um-modal">

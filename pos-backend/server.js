@@ -37,6 +37,10 @@ app.get("/api-status", (req, res) => {
 const usermasterRoutes = require("./routes/usermaster");
 app.use("/api", usermasterRoutes);
 
+// ================= BRANCH DATABASE MASTER ROUTES ================= //
+const branchdatabasemasterRoutes = require("./routes/branchdatabasemaster");
+app.use("/api", branchdatabasemasterRoutes);
+
 // ================= LOGIN ================= //
 app.post("/api/login", async (req, res) => {
   try {

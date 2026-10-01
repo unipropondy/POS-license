@@ -20,6 +20,11 @@ export default function UserMaster({ dbName }) {
   const [branchSearch, setBranchSearch] = useState("");
   const [branchLoading, setBranchLoading] = useState(false);
   const [branchError, setBranchError] = useState(null);
+  
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [editBranchIndex, setEditBranchIndex] = useState(null);
+  const emptyBranchForm = { BranchCode: "", DatabaseName: "" };
+  const [branchForm, setBranchForm] = useState(emptyBranchForm);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.UserId || null;
@@ -71,6 +76,11 @@ export default function UserMaster({ dbName }) {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const handleBranchChange = (e) => {
+    const { name, value } = e.target;
+    setBranchForm(prev => ({ ...prev, [name]: value }));
   };
 
   const saveUser = async () => {
@@ -148,6 +158,48 @@ export default function UserMaster({ dbName }) {
     }
   };
 
+  const saveBranch = async () => {
+    if (!branchForm.BranchCode || !branchForm.DatabaseName) {
+      alert("Branch Code and Database Name are required");
+      return;
+    }
+    try {
+      if (editBranchIndex !== null) {
+        await axios.put(`${BRANCH_API}/${branchForm.BranchCode}`, branchForm, { headers: { 'x-db-name': dbName } });
+        alert("Company Code Updated ✅");
+      } else {
+        await axios.post(BRANCH_API, branchForm, { headers: { 'x-db-name': dbName } });
+        alert("Company Code Saved ✅");
+      }
+      setBranchForm(emptyBranchForm);
+      setShowBranchModal(false);
+      setEditBranchIndex(null);
+      fetchBranches();
+    } catch (err) {
+      console.log(err);
+      alert("Failed to save company code.");
+    }
+  };
+
+  const deleteBranch = async (code) => {
+    if (!window.confirm("Delete this company code?")) return;
+    try {
+      await axios.delete(`${BRANCH_API}/${code}`, { headers: { 'x-db-name': dbName } });
+      fetchBranches();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const openEditBranch = (branch, index) => {
+    setBranchForm({
+      BranchCode: branch.BranchCode || "",
+      DatabaseName: branch.DatabaseName || ""
+    });
+    setEditBranchIndex(index);
+    setShowBranchModal(true);
+  };
+
   const filteredBranches = branches.filter(b =>
     b.BranchCode?.toLowerCase().includes(branchSearch.toLowerCase()) ||
     b.DatabaseName?.toLowerCase().includes(branchSearch.toLowerCase())
@@ -173,6 +225,15 @@ export default function UserMaster({ dbName }) {
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
               New User
+            </button>
+          )}
+          {activeTab === "companycode" && (
+            <button className="um-add-btn" onClick={() => {
+              setBranchForm(emptyBranchForm);
+              setEditBranchIndex(null); setShowBranchModal(true);
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              New Company Code
             </button>
           )}
         </div>
@@ -355,12 +416,13 @@ export default function UserMaster({ dbName }) {
                     <th>#</th>
                     <th>Branch Code</th>
                     <th>Database Name</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {branchLoading ? (
                     <tr>
-                      <td colSpan="3">
+                      <td colSpan="4">
                         <div className="um-empty">
                           <div className="um-empty-icon um-spin">⏳</div>
                           <div className="um-empty-text">Loading company codes...</div>
@@ -369,7 +431,7 @@ export default function UserMaster({ dbName }) {
                     </tr>
                   ) : branchError ? (
                     <tr>
-                      <td colSpan="3">
+                      <td colSpan="4">
                         <div className="um-empty">
                           <div className="um-empty-icon">⚠️</div>
                           <div className="um-empty-text">{branchError}</div>
@@ -381,7 +443,7 @@ export default function UserMaster({ dbName }) {
                     </tr>
                   ) : filteredBranches.length === 0 ? (
                     <tr>
-                      <td colSpan="3">
+                      <td colSpan="4">
                         <div className="um-empty">
                           <div className="um-empty-icon">🏢</div>
                           <div className="um-empty-text">No company codes found</div>
@@ -397,6 +459,18 @@ export default function UserMaster({ dbName }) {
                         <td style={{ color: 'var(--text-dim)', fontSize: '12px', width: '48px' }}>{i + 1}</td>
                         <td><span className="um-code-chip">{b.BranchCode}</span></td>
                         <td><span className="um-username">{b.DatabaseName}</span></td>
+                        <td>
+                          <div className="um-actions">
+                            <button className="um-edit-btn" onClick={() => openEditBranch(b, i)}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              Edit
+                            </button>
+                            <button className="um-del-btn" onClick={() => deleteBranch(b.BranchCode)}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -505,6 +579,54 @@ export default function UserMaster({ dbName }) {
               <button className="um-cancel-btn" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="um-save-btn" onClick={saveUser}>
                 {editIndex !== null ? "Update User" : "Save User"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL (Company Code tab only) */}
+      {showBranchModal && (
+        <div className="um-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowBranchModal(false); }}>
+          <div className="um-modal" style={{ maxWidth: '500px' }}>
+            <div className="um-modal-header">
+              <div className="um-modal-title-wrap">
+                <div className="um-modal-icon">{editBranchIndex !== null ? "✏️" : "➕"}</div>
+                <div>
+                  <div className="um-modal-title">{editBranchIndex !== null ? "Edit Company Code" : "Add New Company Code"}</div>
+                  <div className="um-modal-sub">{editBranchIndex !== null ? "Update company details" : "Fill in the details to create a new company code"}</div>
+                </div>
+              </div>
+              <button className="um-close-btn" onClick={() => setShowBranchModal(false)}>×</button>
+            </div>
+
+            <div className="um-modal-section">
+              <div className="um-section-label">Company Information</div>
+            </div>
+            <div className="um-form-grid" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="um-field">
+                <label className="um-label">Branch Code</label>
+                <input
+                  className={`um-input${editBranchIndex !== null ? " readonly" : ""}`}
+                  name="BranchCode" type="text" value={branchForm.BranchCode}
+                  onChange={handleBranchChange}
+                  readOnly={editBranchIndex !== null}
+                />
+              </div>
+              <div className="um-field">
+                <label className="um-label">Database Name</label>
+                <input
+                  className="um-input"
+                  name="DatabaseName" type="text" value={branchForm.DatabaseName}
+                  onChange={handleBranchChange}
+                />
+              </div>
+            </div>
+
+            <div className="um-modal-footer">
+              <button className="um-cancel-btn" onClick={() => setShowBranchModal(false)}>Cancel</button>
+              <button className="um-save-btn" onClick={saveBranch}>
+                {editBranchIndex !== null ? "Update Company Code" : "Save Company Code"}
               </button>
             </div>
           </div>

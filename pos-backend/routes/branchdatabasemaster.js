@@ -79,19 +79,20 @@ router.post("/branchdatabasemaster", async (req, res) => {
    UPDATE BRANCH DATABASE RECORD
 ================================*/
 router.put("/branchdatabasemaster/:branchCode", async (req, res) => {
-  const { DatabaseName } = req.body;
+  const { BranchCode, DatabaseName } = req.body;
   if (!DatabaseName) {
     return res.status(400).send("DatabaseName is required");
   }
   try {
     const pool = await getPool("UNIPRO");
     const result = await pool.request()
-      .input("BranchCode", sql.VarChar, req.params.branchCode)
+      .input("OldBranchCode", sql.VarChar, req.params.branchCode)
+      .input("NewBranchCode", sql.VarChar, BranchCode || req.params.branchCode)
       .input("DatabaseName", sql.VarChar, DatabaseName)
       .query(`
         UPDATE dbo.BranchDatabaseMaster
-        SET DatabaseName = @DatabaseName
-        WHERE BranchCode = @BranchCode
+        SET BranchCode = @NewBranchCode, DatabaseName = @DatabaseName
+        WHERE BranchCode = @OldBranchCode
       `);
     if (result.rowsAffected[0] === 0) {
       return res.status(404).send("Branch not found");

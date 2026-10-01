@@ -23,7 +23,7 @@ export default function UserMaster({ dbName }) {
   
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [editBranchIndex, setEditBranchIndex] = useState(null);
-  const emptyBranchForm = { BranchCode: "", DatabaseName: "" };
+  const emptyBranchForm = { BranchCode: "", DatabaseName: "", OriginalBranchCode: "" };
   const [branchForm, setBranchForm] = useState(emptyBranchForm);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -165,7 +165,8 @@ export default function UserMaster({ dbName }) {
     }
     try {
       if (editBranchIndex !== null) {
-        await axios.put(`${BRANCH_API}/${branchForm.BranchCode}`, branchForm, { headers: { 'x-db-name': dbName } });
+        // Use OriginalBranchCode for the URL to find the record, and send the new BranchCode in the body
+        await axios.put(`${BRANCH_API}/${branchForm.OriginalBranchCode}`, branchForm, { headers: { 'x-db-name': dbName } });
         alert("Company Code Updated ✅");
       } else {
         await axios.post(BRANCH_API, branchForm, { headers: { 'x-db-name': dbName } });
@@ -193,6 +194,7 @@ export default function UserMaster({ dbName }) {
 
   const openEditBranch = (branch, index) => {
     setBranchForm({
+      OriginalBranchCode: branch.BranchCode,
       BranchCode: branch.BranchCode || "",
       DatabaseName: branch.DatabaseName || ""
     });
@@ -607,10 +609,9 @@ export default function UserMaster({ dbName }) {
               <div className="um-field">
                 <label className="um-label">Branch Code</label>
                 <input
-                  className={`um-input${editBranchIndex !== null ? " readonly" : ""}`}
+                  className="um-input"
                   name="BranchCode" type="text" value={branchForm.BranchCode}
                   onChange={handleBranchChange}
-                  readOnly={editBranchIndex !== null}
                 />
               </div>
               <div className="um-field">

@@ -2,6 +2,7 @@
   "name": "pos-kds",
   "version": "0.1.0",
   "private": true,
+  "homepage": ".",
   "description": "POS KDS App",
   "dependencies": {
     "axios": "^1.18.1",

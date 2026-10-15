@@ -13,6 +13,21 @@ router.get("/quickserve", async (req, res) => {
       return res.status(400).json({ success: false, message: "Database connection not available" });
     }
 
+    // Ensure the EnableQuickServe column exists in the current database's AppSettings
+    try {
+      await pool.request().query(`
+        IF NOT EXISTS (
+          SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_NAME = 'AppSettings' AND COLUMN_NAME = 'EnableQuickServe'
+        )
+        BEGIN
+          ALTER TABLE dbo.AppSettings ADD EnableQuickServe BIT NOT NULL DEFAULT 0;
+        END
+      `);
+    } catch (colErr) {
+      console.warn("Column ensure check warning:", colErr.message);
+    }
+
     const result = await pool.request().query(`
       SELECT TOP 1
         Id,
@@ -51,6 +66,20 @@ router.get("/quickserve", async (req, res) => {
    HELPER: UPDATE QUICK SERVE IN DATABASE
 ============================================================ */
 async function updateQuickServeStatus(pool, targetValue, targetId) {
+  try {
+    await pool.request().query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'AppSettings' AND COLUMN_NAME = 'EnableQuickServe'
+      )
+      BEGIN
+        ALTER TABLE dbo.AppSettings ADD EnableQuickServe BIT NOT NULL DEFAULT 0;
+      END
+    `);
+  } catch (colErr) {
+    console.warn("Column ensure check warning:", colErr.message);
+  }
+
   const request = pool.request()
     .input("enableQuickServe", sql.Bit, targetValue);
 

@@ -223,7 +223,10 @@ export default function UserMaster({ dbName }) {
   const fetchQuickServe = async () => {
     setQuickServeLoading(true);
     try {
-      const res = await axios.get(QUICKSERVE_API, { headers: { 'x-db-name': dbName } });
+      const res = await axios.get(QUICKSERVE_API, {
+        headers: { 'x-db-name': dbName },
+        params: { db: dbName }
+      });
       if (res.data && res.data.success) {
         setQuickServeEnabled(res.data.enableQuickServe === 1);
         setQuickServeDetails({ id: res.data.id, shopName: res.data.shopName });
@@ -256,7 +259,10 @@ export default function UserMaster({ dbName }) {
       const res = await axios.put(
         QUICKSERVE_API,
         { enableQuickServe: targetValue, id: quickServeDetails?.id },
-        { headers: { 'x-db-name': dbName } }
+        {
+          headers: { 'x-db-name': dbName },
+          params: { db: dbName }
+        }
       );
 
       if (res.data && res.data.success) {

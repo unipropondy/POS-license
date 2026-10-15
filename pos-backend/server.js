@@ -15,7 +15,7 @@ console.log("ENV CHECK 👉", process.env.DB_SERVER);
 // ================= DYNAMIC DB MIDDLEWARE =================
 app.use(async (req, res, next) => {
   try {
-    const dbName = req.headers["x-db-name"] || process.env.DB_NAME;
+    const dbName = req.headers["x-db-name"] || req.query.db || process.env.DB_NAME;
 
     if (!dbName) {
       return res.status(400).json({ success: false, message: "Database name required" });

@@ -395,7 +395,11 @@ export default function UserMaster({ dbName }) {
         ) : (
           <>
             <div className="um-stat-card">
-              <div className={`um-stat-icon ${quickServeEnabled ? "green" : "gold"}`}>⚡</div>
+              <div className={`um-stat-icon ${quickServeEnabled ? "green" : "gold"}`}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M13 2L3.5 13.5H11.5L10.5 22L20.5 10.5H12.5L13 2Z" />
+                </svg>
+              </div>
               <div>
                 <div className="um-stat-value" style={{ fontSize: "18px" }}>
                   {quickServeLoading ? "Checking..." : (quickServeEnabled ? "ON / Enabled" : "OFF / Disabled")}
@@ -629,8 +633,40 @@ export default function UserMaster({ dbName }) {
               {/* Master Control Banner */}
               <div className={`qs-master-card ${quickServeEnabled ? "is-active" : ""}`}>
                 <div className="qs-master-left">
-                  <div className="qs-master-icon">
-                    ⚡
+                  <div className={`qs-master-icon ${quickServeEnabled ? "active" : ""}`}>
+                    {quickServeEnabled ? (
+                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <linearGradient id="qsBoltActive" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stopColor="#FFFFFF" />
+                            <stop offset="100%" stopColor="#FFF7ED" />
+                          </linearGradient>
+                          <filter id="qsBoltShadow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(0,0,0,0.22)" />
+                          </filter>
+                        </defs>
+                        <path
+                          d="M13 2L3.5 13.5H11.5L10.5 22L20.5 10.5H12.5L13 2Z"
+                          fill="url(#qsBoltActive)"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          filter="url(#qsBoltShadow)"
+                        />
+                      </svg>
+                    ) : (
+                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                          d="M13 2L3.5 13.5H11.5L10.5 22L20.5 10.5H12.5L13 2Z"
+                          fill="#94a3b8"
+                          stroke="#64748b"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
                   </div>
                   <div className="qs-master-details">
                     <div className="qs-header-row">

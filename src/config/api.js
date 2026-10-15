@@ -1,7 +1,14 @@
-export const BASE_URL = "https://pos-license-production.up.railway.app";
+// Detect if frontend is running on local machine
+const isLocal =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "::1");
 
+export const BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  (isLocal
+    ? "http://localhost:5000"
+    : "https://pos-license-production.up.railway.app");
 
-
-// export const BASE_URL = "http://localhost:3000";
-
-// export default BASE_URL;
+export default BASE_URL;

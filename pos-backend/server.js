@@ -41,6 +41,10 @@ app.use("/api", usermasterRoutes);
 const branchdatabasemasterRoutes = require("./routes/branchdatabasemaster");
 app.use("/api", branchdatabasemasterRoutes);
 
+// ================= QUICK SERVE ROUTES ================= //
+const quickserveRoutes = require("./routes/quickserve");
+app.use("/api", quickserveRoutes);
+
 // ================= LOGIN ================= //
 app.post("/api/login", async (req, res) => {
   try {

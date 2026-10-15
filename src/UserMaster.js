@@ -6,7 +6,7 @@ import { BASE_URL } from "./config/api";
 export default function UserMaster({ dbName }) {
 
   // ─── TAB STATE ─────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState("username"); // "username" | "companycode"
+  const [activeTab, setActiveTab] = useState("username"); // "username" | "companycode" | "quickserve"
 
   // ─── USER NAME TAB STATE ────────────────────────────────────────────────────
   const [users, setUsers] = useState([]);
@@ -26,6 +26,13 @@ export default function UserMaster({ dbName }) {
   const emptyBranchForm = { BranchCode: "", DatabaseName: "", OriginalBranchCode: "" };
   const [branchForm, setBranchForm] = useState(emptyBranchForm);
 
+  // ─── QUICK SERVE TAB STATE ──────────────────────────────────────────────────
+  const [quickServeEnabled, setQuickServeEnabled] = useState(false);
+  const [quickServeLoading, setQuickServeLoading] = useState(false);
+  const [quickServeSaving, setQuickServeSaving] = useState(false);
+  const [quickServeMessage, setQuickServeMessage] = useState(null);
+  const [quickServeDetails, setQuickServeDetails] = useState(null);
+
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.UserId || null;
 
@@ -39,16 +46,21 @@ export default function UserMaster({ dbName }) {
   const [form, setForm] = useState(emptyForm);
   const API = `${BASE_URL}/api/usermaster`;
   const BRANCH_API = `${BASE_URL}/api/branchdatabasemaster`;
+  const QUICKSERVE_API = `${BASE_URL}/api/quickserve`;
 
   useEffect(() => {
     fetchUsers();
     fetchUserGroups();
-  }, []);
+    fetchQuickServe();
+  }, [dbName]);
 
   // Fetch branches when Company Code tab is activated for the first time
   useEffect(() => {
     if (activeTab === "companycode" && branches.length === 0) {
       fetchBranches();
+    }
+    if (activeTab === "quickserve") {
+      fetchQuickServe();
     }
   }, [activeTab]);
 
@@ -207,6 +219,67 @@ export default function UserMaster({ dbName }) {
     b.DatabaseName?.toLowerCase().includes(branchSearch.toLowerCase())
   );
 
+  // ─── QUICK SERVE TAB FUNCTIONS ──────────────────────────────────────────────
+  const fetchQuickServe = async () => {
+    setQuickServeLoading(true);
+    try {
+      const res = await axios.get(QUICKSERVE_API, { headers: { 'x-db-name': dbName } });
+      if (res.data && res.data.success) {
+        setQuickServeEnabled(res.data.enableQuickServe === 1);
+        setQuickServeDetails({ id: res.data.id, shopName: res.data.shopName });
+      }
+    } catch (err) {
+      console.error("Failed to fetch Quick Serve status:", err);
+      if (activeTab === "quickserve") {
+        setQuickServeMessage({
+          type: "error",
+          text: err.response?.data?.message || err.message || "Failed to load Quick Serve settings from database."
+        });
+      }
+    } finally {
+      setQuickServeLoading(false);
+    }
+  };
+
+  const handleToggleQuickServe = async () => {
+    if (quickServeSaving || quickServeLoading) return;
+    const previousState = quickServeEnabled;
+    const nextState = !quickServeEnabled;
+    const targetValue = nextState ? 1 : 0;
+
+    // Optimistic update
+    setQuickServeEnabled(nextState);
+    setQuickServeSaving(true);
+    setQuickServeMessage(null);
+
+    try {
+      const res = await axios.put(
+        QUICKSERVE_API,
+        { enableQuickServe: targetValue, id: quickServeDetails?.id },
+        { headers: { 'x-db-name': dbName } }
+      );
+
+      if (res.data && res.data.success) {
+        setQuickServeMessage({
+          type: "success",
+          text: `Quick Serve ${nextState ? "ON / Enabled (1)" : "OFF / Disabled (0)"} successfully saved to database (${dbName || "default"}).`
+        });
+      } else {
+        throw new Error(res.data?.message || "Failed to update Quick Serve status");
+      }
+    } catch (err) {
+      console.error("Error updating Quick Serve:", err);
+      // Restore previous state on error
+      setQuickServeEnabled(previousState);
+      setQuickServeMessage({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to update Quick Serve in database. Restored previous state."
+      });
+    } finally {
+      setQuickServeSaving(false);
+    }
+  };
+
   return (
     <div className="um-container">
       {/* NAVBAR */}
@@ -238,6 +311,28 @@ export default function UserMaster({ dbName }) {
               New Company Code
             </button>
           )}
+          {activeTab === "quickserve" && (
+            <button
+              className="um-refresh-btn"
+              onClick={fetchQuickServe}
+              disabled={quickServeLoading || quickServeSaving}
+              title="Refresh Quick Serve status from database"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className={quickServeLoading ? "um-spin" : ""}
+              >
+                <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+              Refresh Status
+            </button>
+          )}
         </div>
       </nav>
 
@@ -267,7 +362,7 @@ export default function UserMaster({ dbName }) {
               </div>
             </div>
           </>
-        ) : (
+        ) : activeTab === "companycode" ? (
           <>
             <div className="um-stat-card">
               <div className="um-stat-icon purple">🏢</div>
@@ -288,6 +383,32 @@ export default function UserMaster({ dbName }) {
               <div>
                 <div className="um-stat-value">{filteredBranches.length}</div>
                 <div className="um-stat-label">Filtered Results</div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="um-stat-card">
+              <div className={`um-stat-icon ${quickServeEnabled ? "green" : "gold"}`}>⚡</div>
+              <div>
+                <div className="um-stat-value" style={{ fontSize: "18px" }}>
+                  {quickServeLoading ? "Checking..." : (quickServeEnabled ? "ON / Enabled" : "OFF / Disabled")}
+                </div>
+                <div className="um-stat-label">Quick Serve Status</div>
+              </div>
+            </div>
+            <div className="um-stat-card">
+              <div className="um-stat-icon purple">🗄️</div>
+              <div>
+                <div className="um-stat-value" style={{ fontSize: "18px" }}>{dbName || "Default"}</div>
+                <div className="um-stat-label">Connected Database</div>
+              </div>
+            </div>
+            <div className="um-stat-card">
+              <div className="um-stat-icon gold">⚙️</div>
+              <div>
+                <div className="um-stat-value" style={{ fontSize: "18px" }}>AppSettings</div>
+                <div className="um-stat-label">EnableQuickServe Column</div>
               </div>
             </div>
           </>
@@ -313,6 +434,13 @@ export default function UserMaster({ dbName }) {
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
               Company Code
+            </button>
+            <button
+              className={`um-tab${activeTab === "quickserve" ? " um-tab-active" : ""}`}
+              onClick={() => setActiveTab("quickserve")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Quick Serve
             </button>
           </div>
 
@@ -479,6 +607,123 @@ export default function UserMaster({ dbName }) {
                 </tbody>
               </table>
             </>
+          )}
+
+          {/* ── QUICK SERVE TAB CONTENT ── */}
+          {activeTab === "quickserve" && (
+            <div className="qs-wrapper">
+              {/* Feedback alert message */}
+              {quickServeMessage && (
+                <div className={`qs-alert ${quickServeMessage.type}`}>
+                  <span>{quickServeMessage.text}</span>
+                  <button className="qs-alert-close" onClick={() => setQuickServeMessage(null)}>×</button>
+                </div>
+              )}
+
+              {/* Master Control Banner */}
+              <div className={`qs-master-card ${quickServeEnabled ? "is-active" : ""}`}>
+                <div className="qs-master-left">
+                  <div className="qs-master-icon">
+                    ⚡
+                  </div>
+                  <div className="qs-master-details">
+                    <div className="qs-header-row">
+                      <h2 className="qs-main-title">Quick Serve Express Mode</h2>
+                      <span className={`qs-status-pill ${quickServeEnabled ? "online" : "offline"}`}>
+                        <span className="qs-status-pulse" />
+                        {quickServeEnabled ? "Active & Online" : "Currently Disabled"}
+                      </span>
+                    </div>
+                    <p className="qs-main-desc">
+                      Accelerate counter operations by bypassing table selection and summary review screens.
+                      When enabled, orders are directly processed for immediate payment and dispatched instantly to kitchen and receipt printers.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="qs-master-right">
+                  <div className="qs-switch-container">
+                    <span className={`qs-switch-state-text ${quickServeEnabled ? "on" : "off"}`}>
+                      {quickServeEnabled ? "ON" : "OFF"}
+                    </span>
+                    <label className="qs-switch-large" title={`Click to turn Quick Serve ${quickServeEnabled ? "OFF" : "ON"}`}>
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        checked={quickServeEnabled}
+                        onChange={handleToggleQuickServe}
+                        disabled={quickServeSaving || quickServeLoading}
+                      />
+                      <span className="qs-slider-large" />
+                    </label>
+                  </div>
+
+                  <button
+                    className={`qs-action-btn ${quickServeEnabled ? "turn-off" : "turn-on"}`}
+                    onClick={handleToggleQuickServe}
+                    disabled={quickServeSaving || quickServeLoading}
+                  >
+                    {quickServeSaving
+                      ? "Saving..."
+                      : quickServeEnabled
+                      ? "Turn OFF Quick Serve"
+                      : "Turn ON Quick Serve"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Capabilities & Information Row */}
+              <div className="qs-features-row">
+                <div className="qs-feature-card">
+                  <div className="qs-feature-icon-badge">⚡</div>
+                  <h3 className="qs-feature-title">Express Checkout</h3>
+                  <p className="qs-feature-desc">
+                    Skips unnecessary popups and table allocation. Cashiers complete transactions with 1-tap tender for faster customer turnaround.
+                  </p>
+                  <span className="qs-feature-tag">Speed Optimized</span>
+                </div>
+
+                <div className="qs-feature-card">
+                  <div className="qs-feature-icon-badge">🍳</div>
+                  <h3 className="qs-feature-title">Instant KOT Dispatch</h3>
+                  <p className="qs-feature-desc">
+                    Tickets are routed automatically to Kitchen Display Screens (KDS) and counter prep printers without cashier holding delays.
+                  </p>
+                  <span className="qs-feature-tag">Zero Waiting</span>
+                </div>
+
+                <div className="qs-feature-card">
+                  <div className="qs-feature-icon-badge">🏢</div>
+                  <h3 className="qs-feature-title">Store Scope</h3>
+                  <p className="qs-feature-desc">
+                    Configuration applies across all POS terminals and cash registers connected to database <strong>{dbName || "default"}</strong>.
+                  </p>
+                  <span className="qs-feature-tag">{dbName || "Default Database"}</span>
+                </div>
+              </div>
+
+              {/* Synchronized Database Details Bar */}
+              <div className="qs-sync-bar">
+                <div className="qs-sync-left">
+                  <div className="qs-sync-item">
+                    <span>🗄️ Database:</span>
+                    <span className="qs-sync-code">{dbName || "DEFAULT"}</span>
+                  </div>
+                  <div className="qs-sync-item">
+                    <span>📋 Table:</span>
+                    <span className="qs-sync-code">dbo.AppSettings</span>
+                  </div>
+                  <div className="qs-sync-item">
+                    <span>🏷️ Column:</span>
+                    <span className="qs-sync-code">EnableQuickServe ({quickServeEnabled ? "1" : "0"})</span>
+                  </div>
+                </div>
+
+                <div className="qs-sync-right">
+                  <span>● Real-time SQL Sync Active</span>
+                </div>
+              </div>
+            </div>
           )}
 
         </div>

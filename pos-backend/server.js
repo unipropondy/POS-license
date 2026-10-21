@@ -10,6 +10,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+process.on("uncaughtException", (err) => {
+  console.error("⚠️ Uncaught Exception:", err.message);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️ Unhandled Rejection:", reason?.message || reason);
+});
+
 console.log("ENV CHECK 👉", process.env.DB_SERVER);
 
 // ================= DYNAMIC DB MIDDLEWARE =================

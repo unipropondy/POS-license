@@ -1,27 +1,51 @@
 const sql = require("mssql");
+const path = require("path");
 
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 require("dotenv").config();
-
 
 // ✅ POOL CACHE
 const pools = new Map();
 
+// Helper to strip accidental quotes from env values
+const cleanEnv = (val) => {
+  if (val === undefined || val === null) return "";
+  return String(val).replace(/^["']|["']$/g, "").trim();
+};
+
 // ✅ DYNAMIC CONNECTION FUNCTION
 const getPool = async (dbname) => {
   if (!dbname) throw new Error("Database name is required");
-  if (pools.has(dbname)) {
-    const existing = pools.get(dbname);
+
+  const cleanDbName = cleanEnv(dbname) || cleanEnv(process.env.DB_NAME) || "UNIPRO";
+
+  if (pools.has(cleanDbName)) {
+    const existing = pools.get(cleanDbName);
     if (existing.connected) return existing;
-    pools.delete(dbname);
+    pools.delete(cleanDbName);
+  }
+
+  const user = cleanEnv(process.env.DB_USER);
+  const password = cleanEnv(process.env.DB_PASS);
+  const server = cleanEnv(process.env.DB_SERVER);
+  const port = Number(cleanEnv(process.env.DB_PORT));
+
+  if (!server || !user || !password || !port) {
+    const missing = [];
+    if (!server) missing.push("DB_SERVER");
+    if (!user) missing.push("DB_USER");
+    if (!password) missing.push("DB_PASS");
+    if (!port) missing.push("DB_PORT");
+    throw new Error(`Missing required database environment variables: ${missing.join(", ")}`);
   }
 
   try {
     const pool = new sql.ConnectionPool({
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      server: process.env.DB_SERVER,
-      port: Number(process.env.DB_PORT),
-      database: dbname,
+      user,
+      password,
+      server,
+      port,
+      database: cleanDbName,
       connectionTimeout: 30000,
       requestTimeout: 120000,
       options: {
@@ -36,25 +60,24 @@ const getPool = async (dbname) => {
     });
 
     pool.on("error", (err) => {
-      console.error(`⚠️ SQL Pool Error [${dbname}]:`, err.message);
-      pools.delete(dbname);
+      console.error(`⚠️ SQL Pool Error [${cleanDbName}]:`, err.message);
+      pools.delete(cleanDbName);
     });
 
     await pool.connect();
-    console.log(`✅ SQL Connected : ${dbname}`);
-    pools.set(dbname, pool);
+    console.log(`✅ SQL Connected : ${cleanDbName}`);
+    pools.set(cleanDbName, pool);
     return pool;
 
   } catch (err) {
-    console.error(`❌ DB Connection Failed [${dbname}]:`, err.message);
-    pools.delete(dbname);
+    console.error(`❌ DB Connection Failed [${cleanDbName}]:`, err.message);
+    pools.delete(cleanDbName);
     throw err;
   }
 };
 
-
 // ✅ DEFAULT POOL PROMISE
-const poolPromise = getPool(process.env.DB_NAME || 'UNIPRO');
+const poolPromise = getPool(cleanEnv(process.env.DB_NAME) || "UNIPRO");
 
 module.exports = {
   sql,

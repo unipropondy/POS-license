@@ -1,7 +1,9 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 const { sql, poolPromise } = require("../db");
-const { v4: uuidv4 } = require("uuid");
+
+const uuidv4 = () => crypto.randomUUID();
 
 /* ===============================
    🔥 PASSWORD ENCODE FUNCTION

@@ -40,6 +40,7 @@ export default function UserMaster({ dbName }) {
     UserId: "", UserCode: "", UserName: "", UserPassword: "",
     UserGroupId: "", FirstName: "", LastName: "", FullName: "",
     NickName: "", IdentificationNo: "", CardNumber: "",
+    AllowedLogins: 1,
     FromDate: "", ToDate: "", isWaiter: false, IsDisabled: false
   };
 
@@ -101,6 +102,7 @@ export default function UserMaster({ dbName }) {
     try {
       const payload = {
         ...form, UserCode: userCode,
+        AllowedLogins: form.AllowedLogins !== undefined && form.AllowedLogins !== '' ? parseInt(form.AllowedLogins, 10) : 1,
         isWaiter: form.isWaiter ? 1 : 0,
         IsDisabled: form.IsDisabled ? 1 : 0,
         CreatedBy: userId || "SYSTEM"
@@ -131,6 +133,7 @@ export default function UserMaster({ dbName }) {
         LastName: d.LastName || "", FullName: d.FullName || "",
         NickName: d.NickName || "", IdentificationNo: d.IdentificationNo || "",
         CardNumber: d.CardNumber || "",
+        AllowedLogins: d.AllowedLogins !== undefined && d.AllowedLogins !== null ? d.AllowedLogins : 1,
         FromDate: d.FromDate ? d.FromDate.split('T')[0] : "",
         ToDate: d.ToDate ? d.ToDate.split('T')[0] : "",
         isWaiter: d.isWaiter == 1, IsDisabled: d.IsDisabled == 1
@@ -479,6 +482,7 @@ export default function UserMaster({ dbName }) {
                     <th>#</th>
                     <th>User Code</th>
                     <th>User Name</th>
+                    <th>Allowed Logins</th>
                     <th>From Date</th>
                     <th>To Date</th>
                     <th>Actions</th>
@@ -487,7 +491,7 @@ export default function UserMaster({ dbName }) {
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan="6">
+                      <td colSpan="7">
                         <div className="um-empty">
                           <div className="um-empty-icon">👤</div>
                           <div className="um-empty-text">No users found</div>
@@ -501,6 +505,13 @@ export default function UserMaster({ dbName }) {
                         <td style={{ color: 'var(--text-dim)', fontSize: '12px', width: '48px' }}>{i + 1}</td>
                         <td><span className="um-code-chip">{u.UserCode}</span></td>
                         <td><span className="um-username">{u.UserName}</span></td>
+                        <td>
+                          <span className="um-logins-pill" title={`${u.AllowedLogins ?? 1} session(s) allowed`}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <span>Allowed:</span>
+                            <span className="um-logins-count">{u.AllowedLogins ?? 1}</span>
+                          </span>
+                        </td>
                         <td>
                           {fmt(u.FromDate)
                             ? <span className="um-date-pill">📅 {fmt(u.FromDate)}</span>
@@ -814,6 +825,64 @@ export default function UserMaster({ dbName }) {
                     <option key={i} value={g.UserGroupId}>{g.UserGroupName}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Allowed Logins */}
+              <div className="um-field full">
+                <label className="um-label">
+                  Allowed Logins (Simultaneous Devices / Sessions)
+                </label>
+                <div className="um-number-stepper-wrap">
+                  <div className="um-stepper-controls">
+                    <button
+                      type="button"
+                      className="um-stepper-btn"
+                      onClick={() => setForm(prev => ({
+                        ...prev,
+                        AllowedLogins: Math.max(1, (parseInt(prev.AllowedLogins, 10) || 1) - 1)
+                      }))}
+                      disabled={Number(form.AllowedLogins) <= 1}
+                      title="Decrease logins"
+                    >
+                      −
+                    </button>
+                    <input
+                      className="um-input um-stepper-input"
+                      name="AllowedLogins"
+                      type="number"
+                      min="1"
+                      max="99"
+                      value={form.AllowedLogins}
+                      onChange={handleChange}
+                    />
+                    <button
+                      type="button"
+                      className="um-stepper-btn"
+                      onClick={() => setForm(prev => ({
+                        ...prev,
+                        AllowedLogins: (parseInt(prev.AllowedLogins, 10) || 1) + 1
+                      }))}
+                      title="Increase logins"
+                    >
+                      +
+                    </button>
+
+                    {/* Quick Choose Number Pills */}
+                    <div className="um-quick-pills" style={{ marginLeft: '10px' }}>
+                      <span className="um-quick-pills-label">Quick select:</span>
+                      {[1, 2, 3, 5, 10].map(num => (
+                        <button
+                          key={num}
+                          type="button"
+                          className={`um-preset-pill ${parseInt(form.AllowedLogins, 10) === num ? "active" : ""}`}
+                          onClick={() => setForm(prev => ({ ...prev, AllowedLogins: num }))}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

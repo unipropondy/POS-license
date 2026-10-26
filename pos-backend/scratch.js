@@ -1,1 +1,1 @@
-// Temporary database query script cleared.
+// Temporary database script cleared.

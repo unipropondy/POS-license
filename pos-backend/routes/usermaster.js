@@ -12,12 +12,29 @@ const encodePassword = (input) => {
   return encoded;
 };
 
+const ensureAllowedLogins = async (pool) => {
+  try {
+    await pool.request().query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'UserMaster' AND COLUMN_NAME = 'AllowedLogins'
+      )
+      BEGIN
+        ALTER TABLE dbo.UserMaster ADD AllowedLogins INT DEFAULT 1;
+      END
+    `);
+  } catch (err) {
+    // Ignore if column already exists or schema query fails
+  }
+};
+
 /* ===============================
    GET ALL USERS
 ================================*/
 router.get("/usermaster", async (req, res) => {
   try {
     const pool = req.pool;
+    await ensureAllowedLogins(pool);
 
     const result = await pool.request().query(`
       SELECT
@@ -25,6 +42,7 @@ router.get("/usermaster", async (req, res) => {
         UserCode,
         UserName,
         UserGroupid AS UserGroupId,
+        ISNULL(AllowedLogins, 1) AS AllowedLogins,
         FromDate,
         ToDate,
         CreatedBy,
@@ -46,6 +64,7 @@ router.get("/usermaster", async (req, res) => {
 router.get("/usermaster/:code", async (req, res) => {
   try {
     const pool = req.pool;
+    await ensureAllowedLogins(pool);
 
     const result = await pool.request()
       .input("code", sql.VarChar, req.params.code)
@@ -62,6 +81,7 @@ router.get("/usermaster/:code", async (req, res) => {
           NickName,
           IdentificationNo,
           CardNumber,
+          ISNULL(AllowedLogins, 1) AS AllowedLogins,
           FromDate,
           ToDate,
           isWaiter,
@@ -86,12 +106,14 @@ router.get("/usermaster/:code", async (req, res) => {
 router.post("/usermaster", async (req, res) => {
   try {
     const pool = req.pool;
+    await ensureAllowedLogins(pool);
 
     const {
       UserId,
       UserCode, UserName, UserPassword,
       UserGroupId, FirstName, LastName, FullName, NickName,
       IdentificationNo, CardNumber, isWaiter, IsDisabled,
+      AllowedLogins,
       FromDate, ToDate,
       CreatedBy
     } = req.body;
@@ -105,6 +127,9 @@ router.post("/usermaster", async (req, res) => {
       } catch { return false; }
     };
     const finalPassword = isAlreadyEncoded(UserPassword) ? UserPassword : encodePassword(UserPassword);
+
+    const parsedLogins = AllowedLogins !== undefined && AllowedLogins !== null && AllowedLogins !== '' ? parseInt(AllowedLogins, 10) : 1;
+    const finalAllowedLogins = isNaN(parsedLogins) ? 1 : parsedLogins;
 
     // 🔥 CREATED INFO (from frontend)
     const createdBy = CreatedBy || "SYSTEM";
@@ -129,6 +154,7 @@ router.post("/usermaster", async (req, res) => {
         .input("NickName", sql.VarChar(200), NickName || null)
         .input("IdentificationNo", sql.VarChar(100), IdentificationNo || null)
         .input("CardNumber", sql.VarChar(100), CardNumber || null)
+        .input("AllowedLogins", sql.Int, finalAllowedLogins)
         .input("isWaiter", sql.Bit, isWaiter ? 1 : 0)
         .input("IsDisabled", sql.Bit, IsDisabled ? 1 : 0)
         .input("FromDate", sql.DateTime, FromDate ? new Date(FromDate) : null)
@@ -145,6 +171,7 @@ router.post("/usermaster", async (req, res) => {
             NickName=@NickName,
             IdentificationNo=@IdentificationNo,
             CardNumber=@CardNumber,
+            AllowedLogins=@AllowedLogins,
             isWaiter=@isWaiter,
             IsDisabled=@IsDisabled,
             FromDate=@FromDate,
@@ -193,6 +220,7 @@ router.post("/usermaster", async (req, res) => {
       .input("NickName", sql.VarChar(200), NickName || null)
       .input("IdentificationNo", sql.VarChar(100), IdentificationNo || null)
       .input("CardNumber", sql.VarChar(100), CardNumber || null)
+      .input("AllowedLogins", sql.Int, finalAllowedLogins)
       .input("isWaiter", sql.Bit, isWaiter ? 1 : 0)
       .input("IsDisabled", sql.Bit, IsDisabled ? 1 : 0)
       .input("CreatedBy", sql.VarChar(200), createdBy)
@@ -204,7 +232,7 @@ router.post("/usermaster", async (req, res) => {
         (
           UserId,UserCode,UserName,UserPassword,UserGroupid,
           FirstName,LastName,FullName,NickName,
-          IdentificationNo,CardNumber,isWaiter,IsDisabled,
+          IdentificationNo,CardNumber,AllowedLogins,isWaiter,IsDisabled,
           FromDate,ToDate,
           CreatedBy,CreatedOn
         )
@@ -212,7 +240,7 @@ router.post("/usermaster", async (req, res) => {
         (
           @UserId,@UserCode,@UserName,@UserPassword,@UserGroupid,
           @FirstName,@LastName,@FullName,@NickName,
-          @IdentificationNo,@CardNumber,@isWaiter,@IsDisabled,
+          @IdentificationNo,@CardNumber,@AllowedLogins,@isWaiter,@IsDisabled,
           @FromDate,@ToDate,
           @CreatedBy,GETDATE()
         )

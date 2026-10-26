@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
@@ -8,7 +9,15 @@ const { sql, poolPromise, getPool } = require("./db");
 const app = express();
 
 // ================= MIDDLEWARE =================
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-db-name", "Origin", "Accept"],
+    credentials: true
+  })
+);
+app.options("*", cors());
 app.use(express.json());
 
 process.on("uncaughtException", (err) => {
@@ -21,14 +30,21 @@ process.on("unhandledRejection", (reason) => {
 
 console.log("ENV CHECK 👉", process.env.DB_SERVER);
 
+// ================= HEALTH CHECK / ROOT (No DB required) =================
+app.get("/api-status", (req, res) => {
+  res.status(200).send("API Running 🚀");
+});
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+app.get("/", (req, res) => {
+  res.status(200).send("API Running 🚀");
+});
+
 // ================= DYNAMIC DB MIDDLEWARE =================
 app.use(async (req, res, next) => {
   try {
-    const dbName = req.headers["x-db-name"] || req.query.db || process.env.DB_NAME;
-
-    if (!dbName) {
-      return res.status(400).json({ success: false, message: "Database name required" });
-    }
+    const dbName = req.headers["x-db-name"] || req.query.db || process.env.DB_NAME || "UNIPRO";
 
     req.pool = await getPool(dbName);
     next();
@@ -36,10 +52,6 @@ app.use(async (req, res, next) => {
     console.error("❌ DB Middleware Error:", err);
     res.status(500).json({ success: false, message: "Database connection failed", error: err.message });
   }
-});
-
-app.get("/api-status", (req, res) => {
-  res.status(200).send("API Running 🚀");
 });
 
 // ================= USER MASTER ROUTES ================= //
@@ -151,7 +163,7 @@ app.post("/api/login", async (req, res) => {
 
 
 
-// ================= 404 / REACT ROUTER =================
+// ================= 404 / FALLBACK =================
 app.use((req, res) => {
   if (req.path.startsWith("/api")) {
     res.status(404).json({
@@ -159,15 +171,20 @@ app.use((req, res) => {
       message: "Route not found"
     });
   } else {
-    res.sendFile(path.join(__dirname, "../build", "index.html"));
+    const buildPath = path.join(__dirname, "../build", "index.html");
+    if (fs.existsSync(buildPath)) {
+      res.sendFile(buildPath);
+    } else {
+      res.status(200).send("POS Backend API Running 🚀");
+    }
   }
 });
 
 // ================= PORT =================
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+const server = app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT} (0.0.0.0)`);
 });
 
 server.on("error", (err) => {

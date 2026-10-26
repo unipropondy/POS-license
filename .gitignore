@@ -2,14 +2,18 @@
 
 # dependencies
 node_modules/
+pos-backend/node_modules/
 /.pnp
 .pnp.js
 
 # testing
 /coverage
 
-# production
+# production builds & archives
 /build
+/dist
+dist.zip
+.expo/
 
 # env files
 .env
@@ -21,7 +25,7 @@ pos-backend/.env
 
 # misc
 .DS_Store
-
+Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

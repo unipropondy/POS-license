@@ -1,34 +1,16 @@
-FROM node:18-alpine AS frontend-build
-
-# Set working directory for frontend
-WORKDIR /app
-
-# Install frontend dependencies
-COPY package*.json ./
-RUN npm install
-
-# Copy frontend source and build
-COPY . .
-RUN npm run build
-
-# ========================================
-
-FROM node:18-alpine AS backend
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Install backend dependencies
-COPY pos-backend/package*.json ./pos-backend/
-RUN cd pos-backend && npm install
+# Install backend dependencies (omit dev dependencies for speed)
+COPY pos-backend/package*.json ./
+RUN npm install --omit=dev
 
-# Copy backend source
-COPY pos-backend/ ./pos-backend/
+# Copy backend source files
+COPY pos-backend/ ./
 
-# Copy built frontend from previous stage
-COPY --from=frontend-build /app/build ./build
-
-# Expose port
+# Expose server port
 EXPOSE 3000
 
-# Start server
-CMD ["node", "pos-backend/server.js"]
+# Start backend API
+CMD ["node", "server.js"]

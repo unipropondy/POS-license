@@ -1,0 +1,10 @@
+node_modules
+pos-backend/node_modules
+build
+dist
+dist.zip
+.git
+.gitignore
+README.md
+.expo
+npm-debug.log

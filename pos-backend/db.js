@@ -76,11 +76,7 @@ const getPool = async (dbname) => {
   }
 };
 
-// ✅ DEFAULT POOL PROMISE
-const poolPromise = getPool(cleanEnv(process.env.DB_NAME) || "UNIPRO");
-
 module.exports = {
   sql,
-  getPool,
-  poolPromise
+  getPool
 };

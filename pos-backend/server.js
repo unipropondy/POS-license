@@ -4,19 +4,24 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { sql, poolPromise, getPool } = require("./db");
+const { sql, getPool } = require("./db");
 
 const app = express();
 
-// ================= MIDDLEWARE =================
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-db-name", "Origin", "Accept"],
-    credentials: true
-  })
-);
+// ================= BULLETPROOF CORS MIDDLEWARE =================
+app.use((req, res, next) => {
+  const origin = req.headers.origin || "*";
+  res.header("Access-Control-Allow-Origin", origin);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-db-name, Origin, Accept");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
+
 app.use(express.json());
 
 process.on("uncaughtException", (err) => {
@@ -48,8 +53,12 @@ app.use(async (req, res, next) => {
     req.pool = await getPool(dbName);
     next();
   } catch (err) {
-    console.error("❌ DB Middleware Error:", err);
-    res.status(500).json({ success: false, message: "Database connection failed", error: err.message });
+    console.error("❌ DB Middleware Error:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Database connection failed",
+      error: err.message
+    });
   }
 });
 

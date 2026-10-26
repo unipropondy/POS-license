@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
-const { sql, poolPromise } = require("../db");
+const { sql } = require("../db");
 
 const uuidv4 = () => crypto.randomUUID();
 

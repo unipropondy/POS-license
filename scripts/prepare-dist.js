@@ -54,10 +54,12 @@ if (fs.existsSync(headersSrc)) {
   console.log('✅ Verified _headers in dist for caching rules');
 }
 
-// Automatically update dist.zip
+// Automatically create Cloudflare-compatible dist.zip with POSIX forward slashes
 try {
-  execSync('powershell -Command "Compress-Archive -Path dist\\* -DestinationPath dist.zip -Force"', { cwd: rootDir });
-  console.log('✅ Updated dist.zip archive for 1-click Cloudflare upload');
+  const { createZip } = require('./zip-util');
+  const zipDest = path.join(rootDir, 'dist.zip');
+  createZip(distDir, zipDest);
+  console.log('✅ Created 100% Cloudflare-compatible dist.zip archive with POSIX forward slashes');
 } catch (e) {
   console.log('⚠️ Could not create dist.zip automatically:', e.message);
 }

@@ -1,48 +1,86 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-// import App from './App';
 import PosKds from './pos-kds';
 import DbSelector from './DbSelector';
 import UserMaster from './UserMaster';
 import reportWebVitals from './reportWebVitals';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+function AppRoot() {
+  const [dbName, setDbName] = useState(() => {
+    // 1. Check URL search param (?db=UCSKINDEE)
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const fromParam = params.get('db');
+      if (fromParam && fromParam.trim()) {
+        const clean = fromParam.trim();
+        localStorage.setItem('selected_db', clean);
+        return clean;
+      }
+      // 2. Check localStorage
+      const cached = localStorage.getItem('selected_db');
+      if (cached && cached.trim()) {
+        return cached.trim();
+      }
+    }
+    return '';
+  });
 
-// Extract DB name from query parameter or localStorage
-const getPageComponent = () => {
-  const params = new URLSearchParams(window.location.search);
-  let dbName = params.get('db');
+  // Listen to popstate or direct URL changes if needed
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlDb = params.get('db');
+      if (urlDb && urlDb.trim()) {
+        localStorage.setItem('selected_db', urlDb.trim());
+        setDbName(urlDb.trim());
+      }
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, []);
 
-  if (dbName) {
-    localStorage.setItem('selected_db', dbName);
-  } else {
-    dbName = localStorage.getItem('selected_db');
-  }
+  const handleSelectDb = (newDb) => {
+    const clean = (newDb || '').trim();
+    localStorage.setItem('selected_db', clean);
+    setDbName(clean);
 
-  // If still no db name, show selector
+    // Keep the URL clean or in sync without triggering a reload
+    if (window.history && window.history.replaceState) {
+      const newUrl = clean
+        ? `${window.location.pathname}?db=${encodeURIComponent(clean)}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  };
+
+  const handleClearDb = () => {
+    localStorage.removeItem('selected_db');
+    setDbName('');
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
+
+  // If no DB selected, show selector
   if (!dbName) {
-    return <DbSelector />;
+    return <DbSelector onSelectDb={handleSelectDb} />;
   }
 
-  const path = window.location.pathname.toLowerCase();
+  const path = (window.location.pathname || '').toLowerCase();
   if (path === '/kds') {
-    return <PosKds dbName={dbName} />;
+    return <PosKds dbName={dbName} onDbChange={handleClearDb} />;
   }
-  if (path === '/usermaster') {
-    return <UserMaster dbName={dbName} />;
-  }
-  // Default to User Master
-  return <UserMaster dbName={dbName} />;
-};
 
+  // Default to UserMaster
+  return <UserMaster dbName={dbName} onDbChange={handleClearDb} />;
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    {getPageComponent()}
+    <AppRoot />
   </React.StrictMode>
 );
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();

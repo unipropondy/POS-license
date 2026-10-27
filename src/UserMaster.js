@@ -3,7 +3,7 @@ import "./usermaster.css";
 import axios from "axios";
 import { BASE_URL } from "./config/api";
 
-export default function UserMaster({ dbName }) {
+export default function UserMaster({ dbName, onDbChange }) {
 
   // ─── TAB STATE ─────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("username"); // "username" | "companycode" | "quickserve"
@@ -144,7 +144,11 @@ export default function UserMaster({ dbName }) {
 
   const handleChangeDB = () => {
     localStorage.removeItem('selected_db');
-    window.location.href = '/';
+    if (typeof onDbChange === 'function') {
+      onDbChange();
+    } else {
+      window.location.href = '/';
+    }
   };
 
   const fmt = (date) => date ? new Date(date).toLocaleDateString('en-GB') : null;

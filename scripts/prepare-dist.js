@@ -54,6 +54,13 @@ if (fs.existsSync(headersSrc)) {
   console.log('✅ Verified _headers in dist for caching rules');
 }
 
+const workerSrc = path.join(publicDir, '_worker.js');
+const workerDest = path.join(distDir, '_worker.js');
+if (fs.existsSync(workerSrc)) {
+  fs.copyFileSync(workerSrc, workerDest);
+  console.log('✅ Verified _worker.js in dist for Cloudflare Pages SPA rewrite');
+}
+
 // Automatically create Cloudflare-compatible dist.zip with POSIX forward slashes
 try {
   const { createZip } = require('./zip-util');

@@ -37,7 +37,11 @@ function AppRoot() {
     }
   };
 
-  const handleClearDb = () => {
+  const handleClearDb = (newDb) => {
+    if (typeof newDb === 'string' && newDb.trim()) {
+      handleSelectDb(newDb.trim());
+      return;
+    }
     localStorage.removeItem('selected_db');
     setDbName('');
     if (window.history && window.history.replaceState) {

@@ -39,24 +39,10 @@ export default function DbSelector({ onSelectDb }) {
     return () => { isMounted = false; };
   }, []);
 
-  const connectTo = (databaseName) => {
-    const clean = (databaseName || '').trim();
-    if (!clean) return;
-
-    setConnecting(true);
-    localStorage.setItem('selected_db', clean);
-
-    if (typeof onSelectDb === 'function') {
-      onSelectDb(clean);
-    } else {
-      window.location.href = window.location.pathname;
-    }
-  };
-
   // Find spelling suggestion if typed name isn't an exact match
-  const getManualSuggestion = () => {
-    if (!dbInput.trim() || branches.length === 0) return null;
-    const cleanTarget = dbInput.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const getManualSuggestionFor = (targetName) => {
+    if (!targetName || !targetName.trim() || branches.length === 0) return null;
+    const cleanTarget = targetName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const exact = branches.some((b) => (b.DatabaseName || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '') === cleanTarget);
     if (exact) return null;
 
@@ -100,7 +86,67 @@ export default function DbSelector({ onSelectDb }) {
     return bestMatch;
   };
 
-  const manualSuggestion = getManualSuggestion();
+  const connectTo = async (databaseName) => {
+    const clean = (databaseName || '').trim();
+    if (!clean) return;
+
+    setError(null);
+
+    // 1. Check if it matches an existing branch directly (case-insensitive)
+    const matchedBranch = branches.find(
+      (b) => (b.DatabaseName || '').toLowerCase().trim() === clean.toLowerCase()
+    );
+
+    const targetDb = matchedBranch ? matchedBranch.DatabaseName : clean;
+
+    // If it's a known branch, proceed directly and smoothly
+    if (matchedBranch) {
+      setConnecting(true);
+      localStorage.setItem('selected_db', targetDb);
+      if (typeof onSelectDb === 'function') {
+        onSelectDb(targetDb);
+      } else {
+        window.location.href = window.location.pathname;
+      }
+      return;
+    }
+
+    // 2. If it is NOT a listed branch, verify against SQL Server first
+    // so non-existent DB names or typos are caught right here with friendly UI!
+    setConnecting(true);
+    try {
+      await axios.get(`${BASE_URL}/api/usermaster`, {
+        headers: { 'x-db-name': clean },
+        timeout: 8000
+      });
+
+      // Verification succeeded!
+      localStorage.setItem('selected_db', clean);
+      if (typeof onSelectDb === 'function') {
+        onSelectDb(clean);
+      } else {
+        window.location.href = window.location.pathname;
+      }
+    } catch (err) {
+      console.warn(`Connection validation failed for "${clean}":`, err.message);
+      setConnecting(false);
+      localStorage.removeItem('selected_db');
+
+      const suggestion = getManualSuggestionFor(clean);
+      const isNotFound = err.response?.status === 404 || err.response?.data?.code === 'DB_NOT_FOUND';
+      const serverMsg = err.response?.data?.message;
+
+      setError({
+        database: clean,
+        message: serverMsg || (isNotFound
+          ? `Database "${clean}" does not exist on SQL Server. Please verify the spelling.`
+          : `Cannot reach database "${clean}". Please check your connection.`),
+        suggestion: suggestion
+      });
+    }
+  };
+
+  const manualSuggestion = !error ? getManualSuggestionFor(dbInput) : null;
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
@@ -113,7 +159,37 @@ export default function DbSelector({ onSelectDb }) {
         <h1 style={styles.title}>Connect to Database</h1>
         <p style={styles.subtitle}>Enter the database name to continue</p>
 
-        {manualSuggestion && (
+        {/* DATABASE NOT FOUND / CONNECTION ERROR ALERT */}
+        {error && (
+          <div style={styles.errorAlert}>
+            <div style={styles.errorHeader}>
+              <span style={{ fontSize: '15px' }}>⚠️</span>
+              <span>Database Connection Failed</span>
+            </div>
+            <p style={styles.errorText}>
+              {error.message || `Database "${error.database}" does not exist on SQL Server.`}
+            </p>
+            {error.suggestion && (
+              <div style={styles.errorSuggestion}>
+                <span>💡 Did you mean: <strong>{error.suggestion}</strong>?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setDbInput(error.suggestion);
+                    connectTo(error.suggestion);
+                  }}
+                  style={styles.suggestionBtn}
+                >
+                  Use {error.suggestion}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TYPING SPELLING SUGGESTION (when not in error state) */}
+        {!error && manualSuggestion && (
           <div style={styles.suggestionAlert}>
             <span>💡 Did you mean <strong>{manualSuggestion}</strong>?</span>
             <button
@@ -135,8 +211,15 @@ export default function DbSelector({ onSelectDb }) {
             placeholder="e.g. UCS or UCSPONDY"
             value={dbInput}
             disabled={connecting}
-            onChange={(e) => setDbInput(e.target.value)}
-            style={styles.input}
+            onChange={(e) => {
+              setDbInput(e.target.value);
+              if (error) setError(null);
+            }}
+            style={{
+              ...styles.input,
+              borderColor: error ? '#ef4444' : undefined,
+              boxShadow: error ? '0 0 0 3px rgba(239, 68, 68, 0.15)' : undefined
+            }}
             autoFocus
           />
           <button
@@ -148,7 +231,7 @@ export default function DbSelector({ onSelectDb }) {
               cursor: dbInput.trim() && !connecting ? 'pointer' : 'not-allowed'
             }}
           >
-            {connecting ? 'Connecting...' : 'Connect Now'}
+            {connecting ? 'Checking Database...' : 'Connect Now'}
           </button>
         </form>
 
@@ -232,6 +315,42 @@ const styles = {
     fontSize: '11px',
     fontWeight: '700',
     cursor: 'pointer'
+  },
+  errorAlert: {
+    background: '#fef2f2',
+    border: '1.5px solid #f87171',
+    borderRadius: '12px',
+    padding: '12px 14px',
+    marginBottom: '16px',
+    textAlign: 'left',
+    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.08)'
+  },
+  errorHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '13px',
+    fontWeight: '800',
+    color: '#b91c1c',
+    marginBottom: '4px'
+  },
+  errorText: {
+    margin: '0 0 6px 0',
+    fontSize: '12.5px',
+    lineHeight: '1.4',
+    color: '#7f1d1d'
+  },
+  errorSuggestion: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    background: '#ffffff',
+    border: '1px solid #fecaca',
+    borderRadius: '8px',
+    padding: '6px 10px',
+    marginTop: '8px',
+    fontSize: '12px',
+    color: '#991b1b'
   },
   form: {
     display: 'flex',

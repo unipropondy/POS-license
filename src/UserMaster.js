@@ -88,6 +88,7 @@ export default function UserMaster({ dbName, onDbChange }) {
       setDbError(null);
     } catch (err) {
       console.error("Fetch users error:", err);
+      localStorage.removeItem('selected_db');
       const errMsg = err.response?.data?.message || err.message || "Failed to connect to database.";
       const errDetails = err.response?.data?.error || "";
       setDbError({
@@ -448,9 +449,35 @@ export default function UserMaster({ dbName, onDbChange }) {
             </div>
           )}
 
+          {branches && branches.length > 0 && (
+            <div className="um-db-error-branches">
+              <div className="um-db-error-branches-title">Or switch to an active branch:</div>
+              <div className="um-db-error-chips">
+                {branches.map((b) => (
+                  <button
+                    key={b.DatabaseName}
+                    type="button"
+                    className="um-db-error-chip"
+                    onClick={() => {
+                      if (typeof onDbChange === "function") {
+                        onDbChange(b.DatabaseName);
+                      } else {
+                        localStorage.setItem("selected_db", b.DatabaseName);
+                        window.location.href = window.location.pathname;
+                      }
+                    }}
+                  >
+                    <span className="um-db-error-chip-code">{b.BranchCode}</span>
+                    <span className="um-db-error-chip-name">{b.DatabaseName}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="um-db-error-actions">
             <button className="um-db-change-btn" onClick={handleChangeDB}>
-              🏢 Select from Valid Databases
+              🏢 Back to Database Selection
             </button>
             <button className="um-db-retry-btn" onClick={fetchUsers}>
               🔄 Retry Connection

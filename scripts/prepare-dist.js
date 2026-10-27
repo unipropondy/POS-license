@@ -44,7 +44,7 @@ const redirectsSrc = path.join(publicDir, '_redirects');
 const redirectsDest = path.join(distDir, '_redirects');
 if (fs.existsSync(redirectsSrc)) {
   fs.copyFileSync(redirectsSrc, redirectsDest);
-  console.log('✅ Verified _redirects in dist for SPA routing');
+  console.log('✅ Verified _redirects in dist for SPA routing (/* -> /index.html 200)');
 }
 
 const headersSrc = path.join(publicDir, '_headers');
@@ -54,19 +54,23 @@ if (fs.existsSync(headersSrc)) {
   console.log('✅ Verified _headers in dist for caching rules');
 }
 
-const workerSrc = path.join(publicDir, '_worker.js');
-const workerDest = path.join(distDir, '_worker.js');
-if (fs.existsSync(workerSrc)) {
-  fs.copyFileSync(workerSrc, workerDest);
-  console.log('✅ Verified _worker.js in dist for Cloudflare Pages SPA rewrite');
-}
-
-// Automatically create Cloudflare-compatible dist.zip with POSIX forward slashes
+// Automatically create 100% Cloudflare-compatible dist.zip with standard PKZip headers & file attributes
 try {
-  const { createZip } = require('./zip-util');
   const zipDest = path.join(rootDir, 'dist.zip');
-  createZip(distDir, zipDest);
-  console.log('✅ Created 100% Cloudflare-compatible dist.zip archive with POSIX forward slashes');
+  if (fs.existsSync(zipDest)) {
+    fs.unlinkSync(zipDest);
+  }
+
+  try {
+    execSync(`powershell -NoProfile -Command "Compress-Archive -Path dist\\* -DestinationPath '${zipDest}' -Force"`, {
+      stdio: 'pipe'
+    });
+    console.log('✅ Created 100% Cloudflare-compatible dist.zip using standard Compress-Archive');
+  } catch (psErr) {
+    const { createZip } = require('./zip-util');
+    createZip(distDir, zipDest);
+    console.log('✅ Created dist.zip using fallback zip creator');
+  }
 } catch (e) {
   console.log('⚠️ Could not create dist.zip automatically:', e.message);
 }

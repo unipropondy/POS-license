@@ -367,6 +367,8 @@ export default function UserMaster({ dbName, onDbChange }) {
       {/* NAVBAR */}
       <nav className="um-navbar">
         <div className="um-nav-brand">
+          <div className="um-nav-icon">🛡️</div>
+          <div className="um-nav-title">POS License Master</div>
         </div>
         <div className="um-nav-right">
           <div className="um-db-badge" style={{ borderColor: dbError ? '#ef4444' : undefined }}>

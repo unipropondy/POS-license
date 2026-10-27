@@ -156,8 +156,12 @@ export default function DbSelector({ onSelectDb }) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <div style={styles.badge}>
+          <span style={styles.badgeDot}></span>
+          Enterprise POS License
+        </div>
         <h1 style={styles.title}>Connect to Database</h1>
-        <p style={styles.subtitle}>Enter the database name to continue</p>
+        <p style={styles.subtitle}>Enter the database name or select an active branch</p>
 
         {/* DATABASE NOT FOUND / CONNECTION ERROR ALERT */}
         {error && (
@@ -282,6 +286,27 @@ const styles = {
     maxWidth: '440px',
     textAlign: 'center',
     boxSizing: 'border-box'
+  },
+  badge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: '#eff6ff',
+    border: '1px solid #bfdbfe',
+    color: '#1d4ed8',
+    fontSize: '11px',
+    fontWeight: '800',
+    letterSpacing: '0.06em',
+    padding: '3px 10px',
+    borderRadius: '20px',
+    marginBottom: '10px',
+    textTransform: 'uppercase'
+  },
+  badgeDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#2563eb'
   },
   title: {
     margin: '0 0 0.5rem 0',

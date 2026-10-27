@@ -382,34 +382,8 @@ export default function UserMaster({ dbName, onDbChange }) {
             Cannot reach database <code>{dbError.databaseName || dbName}</code>
           </h2>
           <p className="um-db-error-desc">
-            {dbError.message || `Database "${dbError.databaseName || dbName}" does not exist on SQL Server. Please verify the spelling or select a valid branch below.`}
+            {dbError.message || `Database "${dbError.databaseName || dbName}" does not exist on SQL Server. Please verify the spelling.`}
           </p>
-
-          {branches && branches.length > 0 && (
-            <div className="um-db-error-branches">
-              <div className="um-db-error-branches-title">Or switch to an active branch:</div>
-              <div className="um-db-error-chips">
-                {branches.map((b) => (
-                  <button
-                    key={b.DatabaseName}
-                    type="button"
-                    className="um-db-error-chip"
-                    onClick={() => {
-                      if (typeof onDbChange === "function") {
-                        onDbChange(b.DatabaseName);
-                      } else {
-                        localStorage.setItem("selected_db", b.DatabaseName);
-                        window.location.href = window.location.pathname;
-                      }
-                    }}
-                  >
-                    <span className="um-db-error-chip-code">{b.BranchCode}</span>
-                    <span className="um-db-error-chip-name">{b.DatabaseName}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="um-db-error-actions">
             <button className="um-db-change-btn" onClick={handleChangeDB}>

@@ -110,7 +110,7 @@ export default function DbSelector({ onSelectDb }) {
           Enterprise POS License
         </div>
         <h1 style={styles.title}>Connect to Database</h1>
-        <p style={styles.subtitle}>Enter the database name or select an active branch</p>
+        <p style={styles.subtitle}>Enter the database name to continue</p>
 
         {/* DATABASE NOT FOUND / CONNECTION ERROR ALERT */}
         {error && (
@@ -154,30 +154,6 @@ export default function DbSelector({ onSelectDb }) {
             {connecting ? 'Checking Database...' : 'Connect Now'}
           </button>
         </form>
-
-        {/* Quick select from BranchDatabaseMaster */}
-        {branches.length > 0 && (
-          <div style={styles.branchSection}>
-            <div style={styles.divider}>
-              <span style={styles.dividerText}>OR SELECT A BRANCH</span>
-            </div>
-            <div style={styles.chipGrid}>
-              {branches.map((b) => (
-                <button
-                  key={b.BranchCode || b.DatabaseName}
-                  type="button"
-                  disabled={connecting}
-                  onClick={() => connectTo(b.DatabaseName)}
-                  style={styles.chip}
-                  title={`Connect to ${b.DatabaseName}`}
-                >
-                  <span style={styles.chipCode}>{b.BranchCode}</span>
-                  <span style={styles.chipName}>{b.DatabaseName}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -285,59 +261,5 @@ const styles = {
     cursor: 'pointer',
     transition: 'background 0.2s',
     width: '100%'
-  },
-  branchSection: {
-    marginTop: '1.5rem'
-  },
-  divider: {
-    display: 'flex',
-    alignItems: 'center',
-    textAlign: 'center',
-    margin: '1.2rem 0'
-  },
-  dividerText: {
-    width: '100%',
-    borderBottom: '1px solid #edf2f7',
-    lineHeight: '0.1em',
-    color: '#a0aec0',
-    fontSize: '11px',
-    fontWeight: '700',
-    letterSpacing: '0.05em'
-  },
-  chipGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '8px',
-    maxHeight: '180px',
-    overflowY: 'auto'
-  },
-  chip: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '7px 10px',
-    background: '#f8fafc',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    textAlign: 'left',
-    transition: 'all 0.15s ease'
-  },
-  chipCode: {
-    fontSize: '10px',
-    fontWeight: '800',
-    color: '#64748b',
-    background: '#e2e8f0',
-    padding: '2px 5px',
-    borderRadius: '4px'
-  },
-  chipName: {
-    fontSize: '11.5px',
-    fontWeight: '700',
-    color: '#1e293b',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    marginLeft: '6px'
   }
 };

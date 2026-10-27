@@ -49,6 +49,13 @@ export default function UserMaster({ dbName, onDbChange }) {
   const BRANCH_API = `${BASE_URL}/api/branchdatabasemaster`;
   const QUICKSERVE_API = `${BASE_URL}/api/quickserve`;
 
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [dbError, setDbError] = useState(null);
+
+  useEffect(() => {
+    fetchBranches();
+  }, []);
+
   useEffect(() => {
     fetchUsers();
     fetchUserGroups();
@@ -73,10 +80,24 @@ export default function UserMaster({ dbName, onDbChange }) {
   };
 
   const fetchUsers = async () => {
+    setUsersLoading(true);
+    setDbError(null);
     try {
       const res = await axios.get(API, { headers: { 'x-db-name': dbName } });
       setUsers(Array.isArray(res.data) ? res.data : []);
-    } catch (err) { console.log(err); }
+      setDbError(null);
+    } catch (err) {
+      console.error("Fetch users error:", err);
+      const errMsg = err.response?.data?.message || err.message || "Failed to connect to database.";
+      const errDetails = err.response?.data?.error || "";
+      setDbError({
+        databaseName: dbName,
+        message: errMsg,
+        details: errDetails
+      });
+    } finally {
+      setUsersLoading(false);
+    }
   };
 
   const fetchUserGroups = async () => {
@@ -293,6 +314,53 @@ export default function UserMaster({ dbName, onDbChange }) {
     }
   };
 
+  // Smart spelling suggestion helper
+  const getSuggestedDb = () => {
+    if (!dbName || !branches || branches.length === 0) return null;
+    const cleanTarget = dbName.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+    let bestMatch = null;
+    let minDistance = 999;
+
+    branches.forEach((b) => {
+      const candidate = (b.DatabaseName || "").toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+      if (candidate === cleanTarget) return;
+      if (candidate.includes(cleanTarget) || cleanTarget.includes(candidate)) {
+        bestMatch = b.DatabaseName;
+        minDistance = 1;
+      }
+    });
+
+    if (bestMatch) return bestMatch;
+
+    const lev = (a, b) => {
+      const m = a.length, n = b.length;
+      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+      }
+      return dp[m][n];
+    };
+
+    branches.forEach((b) => {
+      const candidate = (b.DatabaseName || "").toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+      const dist = lev(cleanTarget, candidate);
+      if (dist < minDistance && dist <= 3) {
+        minDistance = dist;
+        bestMatch = b.DatabaseName;
+      }
+    });
+
+    return bestMatch;
+  };
+
+  const suggestedDb = dbError ? getSuggestedDb() : null;
+
   return (
     <div className="um-container">
       {/* NAVBAR */}
@@ -300,13 +368,13 @@ export default function UserMaster({ dbName, onDbChange }) {
         <div className="um-nav-brand">
         </div>
         <div className="um-nav-right">
-          <div className="um-db-badge">
-            <div className="um-db-dot" />
+          <div className="um-db-badge" style={{ borderColor: dbError ? '#ef4444' : undefined }}>
+            <div className="um-db-dot" style={{ background: dbError ? '#ef4444' : undefined, boxShadow: dbError ? '0 0 8px rgba(239,68,68,0.8)' : undefined }} />
             <span className="um-db-label">DB</span>
-            <span className="um-db-name">{dbName || "UNKNOWN"}</span>
+            <span className="um-db-name" style={{ color: dbError ? '#f87171' : undefined }}>{dbName || "UNKNOWN"}</span>
           </div>
           <button className="um-change-btn" onClick={handleChangeDB}>CHANGE</button>
-          {activeTab === "username" && (
+          {!dbError && activeTab === "username" && (
             <button className="um-add-btn" onClick={() => {
               setForm({ ...emptyForm, UserCode: generateUserCode() });
               setEditIndex(null); setShowModal(true);
@@ -315,7 +383,7 @@ export default function UserMaster({ dbName, onDbChange }) {
               New User
             </button>
           )}
-          {activeTab === "companycode" && (
+          {!dbError && activeTab === "companycode" && (
             <button className="um-add-btn" onClick={() => {
               setBranchForm(emptyBranchForm);
               setEditBranchIndex(null); setShowBranchModal(true);
@@ -324,7 +392,7 @@ export default function UserMaster({ dbName, onDbChange }) {
               New Company Code
             </button>
           )}
-          {activeTab === "quickserve" && (
+          {!dbError && activeTab === "quickserve" && (
             <button
               className="um-refresh-btn"
               onClick={fetchQuickServe}
@@ -349,7 +417,47 @@ export default function UserMaster({ dbName, onDbChange }) {
         </div>
       </nav>
 
-      {/* STATS */}
+      {/* ERROR VIEW (Shown if database is unknown or misspelled) */}
+      {dbError ? (
+        <div className="um-db-error-card">
+          <div className="um-db-error-icon">⚠️</div>
+          <div className="um-db-error-badge">Database Connection Failed</div>
+          <h2 className="um-db-error-title">
+            Cannot reach database <code>{dbError.databaseName || dbName}</code>
+          </h2>
+          <p className="um-db-error-desc">
+            {dbError.message || `Database "${dbError.databaseName || dbName}" does not exist on SQL Server or has a spelling mistake.`}
+          </p>
+
+          {suggestedDb && (
+            <div className="um-db-suggestion-box">
+              <span className="um-db-suggestion-text">💡 Did you mean:</span>
+              <button
+                className="um-db-suggestion-btn"
+                onClick={() => {
+                  if (typeof onDbChange === "function") {
+                    onDbChange(suggestedDb);
+                  } else {
+                    window.location.search = `?db=${encodeURIComponent(suggestedDb)}`;
+                  }
+                }}
+              >
+                Connect to {suggestedDb}
+              </button>
+            </div>
+          )}
+
+          <div className="um-db-error-actions">
+            <button className="um-db-change-btn" onClick={handleChangeDB}>
+              🏢 Select from Valid Databases
+            </button>
+            <button className="um-db-retry-btn" onClick={fetchUsers}>
+              🔄 Retry Connection
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="um-stats">
         {activeTab === "username" ? (
           <>
@@ -493,7 +601,18 @@ export default function UserMaster({ dbName, onDbChange }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {usersLoading ? (
+                    <tr>
+                      <td colSpan="7">
+                        <div className="um-table-loading">
+                          <div className="um-table-spinner" />
+                          <div style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600 }}>
+                            Loading data from database [{dbName}]...
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filtered.length === 0 ? (
                     <tr>
                       <td colSpan="7">
                         <div className="um-empty">
@@ -785,6 +904,8 @@ export default function UserMaster({ dbName, onDbChange }) {
 
         </div>
       </div>
+      </>
+      )}
 
       {/* MODAL (User Name tab only) */}
       {showModal && (

@@ -47,16 +47,32 @@ app.get("/", (req, res) => {
 
 // ================= DYNAMIC DB MIDDLEWARE =================
 app.use(async (req, res, next) => {
-  try {
-    const dbName = req.headers["x-db-name"] || req.query.db || process.env.DB_NAME || "UNIPRO";
+  // BranchDatabaseMaster always queries the UNIPRO database directly
+  if (req.path.startsWith("/api/branchdatabasemaster")) {
+    return next();
+  }
 
+  const dbName = req.headers["x-db-name"] || req.query.db || process.env.DB_NAME || "UNIPRO";
+
+  try {
     req.pool = await getPool(dbName);
     next();
   } catch (err) {
-    console.error("❌ DB Middleware Error:", err.message);
-    res.status(500).json({
+    console.error(`❌ DB Middleware Error for [${dbName}]:`, err.message);
+    const isNotFound = err.message && (
+      err.message.includes("Cannot open database") ||
+      err.message.includes("does not exist") ||
+      err.message.includes("Login failed") ||
+      err.message.includes("login failed")
+    );
+
+    res.status(isNotFound ? 404 : 500).json({
       success: false,
-      message: "Database connection failed",
+      code: isNotFound ? "DB_NOT_FOUND" : "DB_CONNECTION_ERROR",
+      database: dbName,
+      message: isNotFound
+        ? `Database "${dbName}" does not exist on the server or has a spelling mistake.`
+        : `Could not connect to database "${dbName}".`,
       error: err.message
     });
   }

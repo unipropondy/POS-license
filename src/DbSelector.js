@@ -6,6 +6,7 @@ export default function DbSelector({ onSelectDb }) {
   const [dbInput, setDbInput] = useState('');
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('');
 
@@ -43,6 +44,7 @@ export default function DbSelector({ onSelectDb }) {
     const clean = (databaseName || '').trim();
     if (!clean) return;
 
+    setConnecting(true);
     localStorage.setItem('selected_db', clean);
 
     if (typeof onSelectDb === 'function') {
@@ -51,6 +53,55 @@ export default function DbSelector({ onSelectDb }) {
       window.location.search = `?db=${encodeURIComponent(clean)}`;
     }
   };
+
+  // Find spelling suggestion if typed name isn't an exact match
+  const getManualSuggestion = () => {
+    if (!dbInput.trim() || branches.length === 0) return null;
+    const cleanTarget = dbInput.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const exact = branches.some((b) => (b.DatabaseName || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '') === cleanTarget);
+    if (exact) return null;
+
+    let bestMatch = null;
+    let minDistance = 999;
+
+    branches.forEach((b) => {
+      const candidate = (b.DatabaseName || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      if (candidate.includes(cleanTarget) || cleanTarget.includes(candidate)) {
+        bestMatch = b.DatabaseName;
+        minDistance = 1;
+      }
+    });
+
+    if (bestMatch) return bestMatch;
+
+    const lev = (a, b) => {
+      const m = a.length, n = b.length;
+      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+      }
+      return dp[m][n];
+    };
+
+    branches.forEach((b) => {
+      const candidate = (b.DatabaseName || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      const dist = lev(cleanTarget, candidate);
+      if (dist < minDistance && dist <= 3) {
+        minDistance = dist;
+        bestMatch = b.DatabaseName;
+      }
+    });
+
+    return bestMatch;
+  };
+
+  const manualSuggestion = getManualSuggestion();
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
@@ -108,6 +159,7 @@ export default function DbSelector({ onSelectDb }) {
                   <button
                     key={b.BranchCode || b.DatabaseName}
                     type="button"
+                    disabled={connecting}
                     onClick={() => connectTo(b.DatabaseName)}
                     style={styles.branchButton}
                     title={`Connect to ${b.DatabaseName} (${b.BranchCode})`}
@@ -134,24 +186,41 @@ export default function DbSelector({ onSelectDb }) {
 
         {/* Manual Input Form */}
         <form onSubmit={handleManualSubmit} style={styles.form}>
+          {manualSuggestion && (
+            <div style={styles.suggestionAlert}>
+              <span>💡 Did you mean <strong>{manualSuggestion}</strong>?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDbInput(manualSuggestion);
+                  connectTo(manualSuggestion);
+                }}
+                style={styles.suggestionBtn}
+              >
+                Use {manualSuggestion}
+              </button>
+            </div>
+          )}
+
           <div style={styles.inputRow}>
             <input
               type="text"
               placeholder="e.g. UCSKINDEE or UCSPONDY"
               value={dbInput}
+              disabled={connecting}
               onChange={(e) => setDbInput(e.target.value)}
               style={styles.input}
             />
             <button
               type="submit"
-              disabled={!dbInput.trim()}
+              disabled={!dbInput.trim() || connecting}
               style={{
                 ...styles.connectBtn,
-                opacity: dbInput.trim() ? 1 : 0.6,
-                cursor: dbInput.trim() ? 'pointer' : 'not-allowed'
+                opacity: dbInput.trim() && !connecting ? 1 : 0.6,
+                cursor: dbInput.trim() && !connecting ? 'pointer' : 'not-allowed'
               }}
             >
-              Connect
+              {connecting ? 'Connecting...' : 'Connect'}
             </button>
           </div>
         </form>
@@ -327,6 +396,28 @@ const styles = {
     fontSize: '11px',
     fontWeight: '700',
     letterSpacing: '0.05em'
+  },
+  suggestionAlert: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    background: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    borderRadius: '10px',
+    padding: '10px 14px',
+    marginBottom: '12px',
+    fontSize: '12px',
+    color: '#166534'
+  },
+  suggestionBtn: {
+    background: '#15803d',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '5px 10px',
+    fontSize: '11px',
+    fontWeight: '700',
+    cursor: 'pointer'
   },
   form: {
     display: 'flex',

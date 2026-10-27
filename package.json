@@ -27,7 +27,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && node scripts/prepare-dist.js"
+    "build": "react-scripts build && node scripts/prepare-dist.js",
+    "deploy": "wrangler pages deploy dist --project-name=poss-license"
   },
   "browserslist": {
     "production": [

@@ -50,7 +50,7 @@ export default function DbSelector({ onSelectDb }) {
     if (typeof onSelectDb === 'function') {
       onSelectDb(clean);
     } else {
-      window.location.search = `?db=${encodeURIComponent(clean)}`;
+      window.location.href = window.location.pathname;
     }
   };
 

@@ -438,7 +438,8 @@ export default function UserMaster({ dbName, onDbChange }) {
                   if (typeof onDbChange === "function") {
                     onDbChange(suggestedDb);
                   } else {
-                    window.location.search = `?db=${encodeURIComponent(suggestedDb)}`;
+                    localStorage.setItem("selected_db", suggestedDb);
+                    window.location.href = window.location.pathname;
                   }
                 }}
               >

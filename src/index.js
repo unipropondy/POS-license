@@ -15,6 +15,10 @@ function AppRoot() {
       if (fromParam && fromParam.trim()) {
         const clean = fromParam.trim();
         localStorage.setItem('selected_db', clean);
+        // Automatically clean the URL in the browser so no ?db= remains in the address bar
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
         return clean;
       }
       // 2. Check localStorage
@@ -26,31 +30,14 @@ function AppRoot() {
     return '';
   });
 
-  // Listen to popstate or direct URL changes if needed
-  useEffect(() => {
-    const handleUrlChange = () => {
-      const params = new URLSearchParams(window.location.search);
-      const urlDb = params.get('db');
-      if (urlDb && urlDb.trim()) {
-        localStorage.setItem('selected_db', urlDb.trim());
-        setDbName(urlDb.trim());
-      }
-    };
-    window.addEventListener('popstate', handleUrlChange);
-    return () => window.removeEventListener('popstate', handleUrlChange);
-  }, []);
-
   const handleSelectDb = (newDb) => {
     const clean = (newDb || '').trim();
     localStorage.setItem('selected_db', clean);
     setDbName(clean);
 
-    // Keep the URL clean or in sync without triggering a reload
+    // Keep the address bar completely clean: https://poss-license.pages.dev/
     if (window.history && window.history.replaceState) {
-      const newUrl = clean
-        ? `${window.location.pathname}?db=${encodeURIComponent(clean)}`
-        : window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
+      window.history.replaceState({}, '', window.location.pathname);
     }
   };
 

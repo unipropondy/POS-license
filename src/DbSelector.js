@@ -39,53 +39,6 @@ export default function DbSelector({ onSelectDb }) {
     return () => { isMounted = false; };
   }, []);
 
-  // Find spelling suggestion if typed name isn't an exact match
-  const getManualSuggestionFor = (targetName) => {
-    if (!targetName || !targetName.trim() || branches.length === 0) return null;
-    const cleanTarget = targetName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-    const exact = branches.some((b) => (b.DatabaseName || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '') === cleanTarget);
-    if (exact) return null;
-
-    let bestMatch = null;
-    let minDistance = 999;
-
-    branches.forEach((b) => {
-      const candidate = (b.DatabaseName || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      if (candidate.includes(cleanTarget) || cleanTarget.includes(candidate)) {
-        bestMatch = b.DatabaseName;
-        minDistance = 1;
-      }
-    });
-
-    if (bestMatch) return bestMatch;
-
-    const lev = (a, b) => {
-      const m = a.length, n = b.length;
-      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-      for (let i = 0; i <= m; i++) dp[i][0] = i;
-      for (let j = 0; j <= n; j++) dp[0][j] = j;
-      for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-          dp[i][j] = a[i - 1] === b[j - 1]
-            ? dp[i - 1][j - 1]
-            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-        }
-      }
-      return dp[m][n];
-    };
-
-    branches.forEach((b) => {
-      const candidate = (b.DatabaseName || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      const dist = lev(cleanTarget, candidate);
-      if (dist < minDistance && dist <= 3) {
-        minDistance = dist;
-        bestMatch = b.DatabaseName;
-      }
-    });
-
-    return bestMatch;
-  };
-
   const connectTo = async (databaseName) => {
     const clean = (databaseName || '').trim();
     if (!clean) return;
@@ -132,21 +85,17 @@ export default function DbSelector({ onSelectDb }) {
       setConnecting(false);
       localStorage.removeItem('selected_db');
 
-      const suggestion = getManualSuggestionFor(clean);
       const isNotFound = err.response?.status === 404 || err.response?.data?.code === 'DB_NOT_FOUND';
       const serverMsg = err.response?.data?.message;
 
       setError({
         database: clean,
         message: serverMsg || (isNotFound
-          ? `Database "${clean}" does not exist on SQL Server. Please verify the spelling.`
-          : `Cannot reach database "${clean}". Please check your connection.`),
-        suggestion: suggestion
+          ? `Database "${clean}" does not exist on SQL Server. Please enter the correct database name.`
+          : `Cannot reach database "${clean}". Please check your network connection.`)
       });
     }
   };
-
-  const manualSuggestion = !error ? getManualSuggestionFor(dbInput) : null;
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
@@ -171,41 +120,8 @@ export default function DbSelector({ onSelectDb }) {
               <span>Database Connection Failed</span>
             </div>
             <p style={styles.errorText}>
-              {error.message || `Database "${error.database}" does not exist on SQL Server.`}
+              {error.message || `Database "${error.database}" does not exist on SQL Server. Please enter the correct database name.`}
             </p>
-            {error.suggestion && (
-              <div style={styles.errorSuggestion}>
-                <span>💡 Did you mean: <strong>{error.suggestion}</strong>?</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError(null);
-                    setDbInput(error.suggestion);
-                    connectTo(error.suggestion);
-                  }}
-                  style={styles.suggestionBtn}
-                >
-                  Use {error.suggestion}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TYPING SPELLING SUGGESTION (when not in error state) */}
-        {!error && manualSuggestion && (
-          <div style={styles.suggestionAlert}>
-            <span>💡 Did you mean <strong>{manualSuggestion}</strong>?</span>
-            <button
-              type="button"
-              onClick={() => {
-                setDbInput(manualSuggestion);
-                connectTo(manualSuggestion);
-              }}
-              style={styles.suggestionBtn}
-            >
-              Use {manualSuggestion}
-            </button>
           </div>
         )}
 
@@ -319,28 +235,6 @@ const styles = {
     color: '#636e72',
     fontSize: '0.95rem'
   },
-  suggestionAlert: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: '#f0fdf4',
-    border: '1px solid #bbf7d0',
-    borderRadius: '10px',
-    padding: '8px 12px',
-    marginBottom: '14px',
-    fontSize: '12px',
-    color: '#166534'
-  },
-  suggestionBtn: {
-    background: '#15803d',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '6px',
-    padding: '4px 10px',
-    fontSize: '11px',
-    fontWeight: '700',
-    cursor: 'pointer'
-  },
   errorAlert: {
     background: '#fef2f2',
     border: '1.5px solid #f87171',
@@ -360,22 +254,10 @@ const styles = {
     marginBottom: '4px'
   },
   errorText: {
-    margin: '0 0 6px 0',
+    margin: '0',
     fontSize: '12.5px',
     lineHeight: '1.4',
     color: '#7f1d1d'
-  },
-  errorSuggestion: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: '#ffffff',
-    border: '1px solid #fecaca',
-    borderRadius: '8px',
-    padding: '6px 10px',
-    marginTop: '8px',
-    fontSize: '12px',
-    color: '#991b1b'
   },
   form: {
     display: 'flex',

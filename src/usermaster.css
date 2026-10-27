@@ -1740,43 +1740,6 @@
   margin: 0 0 24px;
 }
 
-.um-db-suggestion-box {
-  background: rgba(14, 165, 233, 0.1);
-  border: 1px solid rgba(14, 165, 233, 0.3);
-  border-radius: 12px;
-  padding: 14px 18px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.um-db-suggestion-text {
-  color: #38bdf8;
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-
-.um-db-suggestion-btn {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
-}
-
-.um-db-suggestion-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
-}
-
 .um-db-error-branches {
   margin: 20px 0 24px;
   padding-top: 18px;

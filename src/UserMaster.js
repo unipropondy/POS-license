@@ -321,7 +321,7 @@ export default function UserMaster({ dbName, onDbChange }) {
       <nav className="um-navbar">
         <div className="um-nav-brand">
           <div className="um-brand-logo-wrap">
-            <img src="/unipro-logo.png" alt="Unipro Softwares" className="um-brand-logo-img" />
+            <img src="/unipro-icon.png" alt="Unipro Softwares" className="um-brand-logo-img" />
           </div>
           <div className="um-brand-text-col">
             <div className="um-brand-title-row">

@@ -180,8 +180,8 @@ export default function UserMaster({ dbName, onDbChange }) {
     u.UserName?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const activeCount = users.filter(u => !u.IsDisabled).length;
-  const waiterCount = users.filter(u => u.isWaiter).length;
+  const activeCount = users.filter(u => !(u.IsDisabled == 1 || u.IsDisabled === true || u.IsDisabled === '1')).length;
+  const waiterCount = users.filter(u => u.isWaiter == 1 || u.isWaiter === true || u.isWaiter === '1').length;
 
   // ─── COMPANY CODE TAB FUNCTIONS ─────────────────────────────────────────────
   const fetchBranches = async () => {
@@ -422,7 +422,7 @@ export default function UserMaster({ dbName, onDbChange }) {
               </div>
             </div>
             <div className="um-stat-card">
-              <div className="um-stat-icon gold">🍽️</div>
+              <div className="um-stat-icon gold">👨‍🍳</div>
               <div>
                 <div className="um-stat-value">{waiterCount}</div>
                 <div className="um-stat-label">Waiters</div>
@@ -574,7 +574,17 @@ export default function UserMaster({ dbName, onDbChange }) {
                       <tr key={u.UserId}>
                         <td style={{ color: 'var(--text-dim)', fontSize: '12px', width: '48px' }}>{i + 1}</td>
                         <td><span className="um-code-chip">{u.UserCode}</span></td>
-                        <td><span className="um-username">{u.UserName}</span></td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span className="um-username">{u.UserName}</span>
+                            {(u.isWaiter == 1 || u.isWaiter === true || u.isWaiter === '1') && (
+                              <span className="um-waiter-badge">👨‍🍳 Waiter</span>
+                            )}
+                            {(u.IsDisabled == 1 || u.IsDisabled === true || u.IsDisabled === '1') && (
+                              <span className="um-disabled-badge">🚫 Disabled</span>
+                            )}
+                          </div>
+                        </td>
                         <td>
                           <span className="um-logins-pill" title={`${u.AllowedLogins ?? 1} session(s) allowed`}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -1000,7 +1010,7 @@ export default function UserMaster({ dbName, onDbChange }) {
             <div className="um-checkbox-row">
               <label className="um-check-label">
                 <input type="checkbox" name="isWaiter" checked={form.isWaiter} onChange={handleChange} />
-                🍽️ Is Waiter
+                👨‍🍳 Is Waiter
               </label>
               <label className="um-check-label">
                 <input type="checkbox" name="IsDisabled" checked={form.IsDisabled} onChange={handleChange} />

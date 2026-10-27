@@ -492,8 +492,36 @@
 
 /* Username */
 .um-username {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
+}
+
+.um-waiter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.um-disabled-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
 /* Date pill */
@@ -1372,20 +1400,27 @@
     display: flex !important; /* Brand must NEVER be hidden */
     align-items: center;
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start !important;
+    gap: 12px !important;
   }
 
   .um-brand-logo-wrap {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
 
   .um-brand-title {
-    font-size: 14px;
+    font-size: 13.5px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.2px;
   }
 
   .um-brand-subtitle {
-    font-size: 10px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
   }
 
   .um-nav-right {
@@ -1394,8 +1429,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    flex-wrap: wrap;
-    padding-top: 4px;
+    flex-wrap: nowrap;
+    padding-top: 6px;
     border-top: 1px solid rgba(13, 105, 87, 0.08);
   }
 
@@ -1404,10 +1439,12 @@
     font-size: 11px;
     max-width: none;
     gap: 6px;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .um-db-name {
-    max-width: 110px;
+    max-width: 100px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1420,27 +1457,66 @@
     padding: 7px 12px;
     font-size: 12px;
     gap: 5px;
+    flex-shrink: 0;
   }
 
-  /* Stats Row */
+  /* Stats Row - Compact 3-Column Modern Grid (Not long stacked rows) */
   .um-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px 12px;
-    width: 100%;
-    box-sizing: border-box;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    padding: 10px 12px 4px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .um-stat-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+    padding: 10px 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 5px !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+  }
+
+  .um-stat-card > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
     width: 100%;
-    flex: none;
-    padding: 12px 14px;
-    box-sizing: border-box;
+  }
+
+  .um-stat-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 15px !important;
+    border-radius: 8px !important;
   }
 
   .um-stat-value {
     font-size: 17px !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+
+  .um-stat-label {
+    font-size: 9px !important;
+    letter-spacing: 0.2px !important;
+    margin-top: 2px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
   }
 
   /* Table / Card Container */
@@ -1717,13 +1793,23 @@
   }
 
   .um-brand-logo-wrap {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
   }
 
   .um-change-btn,
   .um-add-btn {
-    padding: 6px 10px;
+    padding: 6px 9px;
+    font-size: 11px;
+  }
+
+  .um-db-badge {
+    padding: 4px 8px;
+    font-size: 10.5px;
+  }
+
+  .um-db-name {
+    max-width: 80px;
     font-size: 11px;
   }
 }

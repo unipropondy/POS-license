@@ -45,6 +45,8 @@ router.get("/usermaster", async (req, res) => {
         UserName,
         UserGroupid AS UserGroupId,
         ISNULL(AllowedLogins, 1) AS AllowedLogins,
+        ISNULL(isWaiter, 0) AS isWaiter,
+        ISNULL(IsDisabled, 0) AS IsDisabled,
         FromDate,
         ToDate,
         CreatedBy,

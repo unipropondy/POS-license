@@ -105,12 +105,16 @@ export default function DbSelector({ onSelectDb }) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <div style={styles.logoWrap}>
+          <img src="/unipro-logo.png" alt="Unipro Softwares" style={styles.logoImg} />
+        </div>
         <div style={styles.badge}>
           <span style={styles.badgeDot}></span>
-          Enterprise POS License
+          LICENSE MANAGEMENT v2.0
         </div>
-        <h1 style={styles.title}>Connect to Database</h1>
-        <p style={styles.subtitle}>Enter the database name to continue</p>
+        <h1 style={styles.title}>UNIPRO LICENSE MANAGEMENT</h1>
+        <p style={styles.subtitle}>(CAFE, CLUB, CARWASH)</p>
+        <p style={styles.helperText}>Enter the database name to continue</p>
 
         {/* DATABASE NOT FOUND / CONNECTION ERROR ALERT */}
         {error && (
@@ -165,51 +169,71 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#f1f2f6',
+    background: 'linear-gradient(135deg, #f0fdf9 0%, #f8fafc 100%)',
     fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
     padding: '20px'
   },
   card: {
     background: 'white',
-    padding: '2.5rem',
-    borderRadius: '16px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
+    padding: '2.5rem 2rem',
+    borderRadius: '20px',
+    boxShadow: '0 20px 40px -15px rgba(13, 105, 87, 0.12), 0 0 0 1px rgba(13, 105, 87, 0.08)',
     width: '100%',
-    maxWidth: '440px',
+    maxWidth: '460px',
     textAlign: 'center',
     boxSizing: 'border-box'
+  },
+  logoWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: '1rem'
+  },
+  logoImg: {
+    maxHeight: '68px',
+    maxWidth: '220px',
+    objectFit: 'contain'
   },
   badge: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    background: '#eff6ff',
-    border: '1px solid #bfdbfe',
-    color: '#1d4ed8',
+    background: '#f0fdf9',
+    border: '1px solid #a7f3d0',
+    color: '#0d6957',
     fontSize: '11px',
     fontWeight: '800',
     letterSpacing: '0.06em',
-    padding: '3px 10px',
+    padding: '4px 12px',
     borderRadius: '20px',
     marginBottom: '10px',
     textTransform: 'uppercase'
   },
   badgeDot: {
-    width: '6px',
-    height: '6px',
+    width: '7px',
+    height: '7px',
     borderRadius: '50%',
-    background: '#2563eb'
+    background: '#10b981'
   },
   title: {
-    margin: '0 0 0.5rem 0',
-    fontSize: '1.6rem',
+    margin: '0 0 0.35rem 0',
+    fontSize: '1.45rem',
     fontWeight: '800',
-    color: '#2d3436'
+    color: '#064e3b',
+    lineHeight: '1.25',
+    letterSpacing: '-0.3px'
   },
   subtitle: {
+    margin: '0 0 0.4rem 0',
+    color: '#d97706',
+    fontSize: '0.88rem',
+    fontWeight: '700',
+    letterSpacing: '0.5px'
+  },
+  helperText: {
     margin: '0 0 1.5rem 0',
-    color: '#636e72',
-    fontSize: '0.95rem'
+    color: '#64748b',
+    fontSize: '0.9rem'
   },
   errorAlert: {
     background: '#fef2f2',
@@ -242,24 +266,25 @@ const styles = {
   },
   input: {
     padding: '0.85rem 1rem',
-    borderRadius: '8px',
-    border: '2px solid #dfe6e9',
+    borderRadius: '10px',
+    border: '2px solid #e2e8f0',
     fontSize: '1rem',
     outline: 'none',
-    transition: 'border-color 0.2s',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
     boxSizing: 'border-box',
     width: '100%'
   },
   button: {
-    padding: '0.85rem',
-    borderRadius: '8px',
+    padding: '0.9rem',
+    borderRadius: '10px',
     border: 'none',
-    background: '#0984e3',
+    background: 'linear-gradient(135deg, #0d6957 0%, #117a66 100%)',
     color: 'white',
     fontSize: '1rem',
     fontWeight: '700',
     cursor: 'pointer',
-    transition: 'background 0.2s',
-    width: '100%'
+    transition: 'all 0.2s',
+    width: '100%',
+    boxShadow: '0 4px 14px rgba(13, 105, 87, 0.25)'
   }
 };

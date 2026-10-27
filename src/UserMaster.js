@@ -320,8 +320,16 @@ export default function UserMaster({ dbName, onDbChange }) {
       {/* NAVBAR */}
       <nav className="um-navbar">
         <div className="um-nav-brand">
-          <div className="um-nav-icon">🛡️</div>
-          <div className="um-nav-title">POS License Master</div>
+          <div className="um-brand-logo-wrap">
+            <img src="/unipro-logo.png" alt="Unipro Softwares" className="um-brand-logo-img" />
+          </div>
+          <div className="um-brand-text-col">
+            <div className="um-brand-title-row">
+              <span className="um-brand-title">UNIPRO LICENSE MANAGEMENT</span>
+              <span className="um-version-pill">v2.0</span>
+            </div>
+            <span className="um-brand-subtitle">(CAFE, CLUB, CARWASH)</span>
+          </div>
         </div>
         <div className="um-nav-right">
           <div className="um-db-badge" style={{ borderColor: dbError ? '#ef4444' : undefined }}>
@@ -526,7 +534,8 @@ export default function UserMaster({ dbName, onDbChange }) {
                 </div>
               </div>
 
-              <table className="um-table">
+              <div className="um-table-responsive">
+                <table className="um-table">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -600,6 +609,7 @@ export default function UserMaster({ dbName, onDbChange }) {
                   )}
                 </tbody>
               </table>
+              </div>
             </>
           )}
 
@@ -622,7 +632,8 @@ export default function UserMaster({ dbName, onDbChange }) {
                 </div>
               </div>
 
-              <table className="um-table">
+              <div className="um-table-responsive">
+                <table className="um-table">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -688,6 +699,7 @@ export default function UserMaster({ dbName, onDbChange }) {
                   )}
                 </tbody>
               </table>
+              </div>
             </>
           )}
 

@@ -24,6 +24,14 @@ const ensureAllowedLogins = async (pool) => {
       BEGIN
         ALTER TABLE dbo.UserMaster ADD AllowedLogins INT DEFAULT 1;
       END
+
+      IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'UserMaster' AND COLUMN_NAME = 'isWaiter'
+      )
+      BEGIN
+        ALTER TABLE dbo.UserMaster ADD isWaiter BIT DEFAULT 0;
+      END
     `);
   } catch (err) {
     // Ignore if column already exists or schema query fails

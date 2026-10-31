@@ -133,7 +133,15 @@ export default function UserMaster({ dbName, onDbChange }) {
       alert(editIndex !== null ? "User Updated ✅" : "User Saved ✅");
       setForm(emptyForm); setShowModal(false); setEditIndex(null);
       fetchUsers();
-    } catch (err) { console.log(err); alert("Failed to save user."); }
+    } catch (err) {
+      console.error("Save User Error:", err);
+      const serverMsg =
+        err.response?.data?.message ||
+        (typeof err.response?.data === "string" ? err.response.data : null) ||
+        err.message ||
+        "Unknown error";
+      alert(`Failed to save user: ${serverMsg}`);
+    }
   };
 
   const deleteUser = async (code) => {

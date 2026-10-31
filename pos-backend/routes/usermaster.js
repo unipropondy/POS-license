@@ -131,7 +131,6 @@ router.post("/usermaster", async (req, res) => {
     } = req.body;
 
     // 🔥 PASSWORD ENCODE - only encode plain text passwords
-    // If password looks like it's already Base64 encoded (from DB), don't re-encode
     const isAlreadyEncoded = (str) => {
       if (!str) return false;
       try {
@@ -143,62 +142,141 @@ router.post("/usermaster", async (req, res) => {
     const parsedLogins = AllowedLogins !== undefined && AllowedLogins !== null && AllowedLogins !== '' ? parseInt(AllowedLogins, 10) : 1;
     const finalAllowedLogins = isNaN(parsedLogins) ? 1 : parsedLogins;
 
-    // 🔥 CREATED INFO (from frontend)
-    const createdBy = CreatedBy || "SYSTEM";
-    const createdOn = new Date();
+    // Inspect column types dynamically to prevent type mismatch (e.g. UniqueIdentifier vs VarChar)
+    const colsResult = await pool.request().query(`
+      SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_NAME = 'UserMaster'
+    `);
+    const cols = new Map(colsResult.recordset.map(c => [c.COLUMN_NAME.toLowerCase(), c]));
+    const hasCol = (name) => cols.has(name.toLowerCase());
+    const isGuid = (val) => typeof val === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
 
-    const cleanUserId = (UserId && UserId.length === 36) ? UserId : null;
-    const cleanGroupId = (UserGroupId && UserGroupId.length === 36) ? UserGroupId : null;
+    // Resolve UserGroupId
+    let groupVal = null;
+    let groupType = sql.UniqueIdentifier;
+    const groupCol = cols.get('usergroupid');
+    if (groupCol) {
+      const dt = groupCol.DATA_TYPE.toLowerCase();
+      if (dt === 'uniqueidentifier') {
+        groupType = sql.UniqueIdentifier;
+        if (isGuid(UserGroupId)) {
+          groupVal = UserGroupId;
+        } else if (groupCol.IS_NULLABLE === 'YES') {
+          groupVal = null;
+        } else {
+          groupVal = '00000000-0000-0000-0000-000000000000';
+        }
+      } else if (dt.includes('int')) {
+        groupType = sql.Int;
+        groupVal = UserGroupId ? parseInt(UserGroupId, 10) : null;
+      } else {
+        groupType = sql.VarChar(100);
+        groupVal = UserGroupId || null;
+      }
+    }
+
+    // Resolve CreatedBy (prevents: Conversion failed when converting from a character string to uniqueidentifier)
+    let createdByVal = null;
+    let createdByType = sql.UniqueIdentifier;
+    const createdByCol = cols.get('createdby');
+    if (createdByCol) {
+      const dt = createdByCol.DATA_TYPE.toLowerCase();
+      if (dt === 'uniqueidentifier') {
+        createdByType = sql.UniqueIdentifier;
+        if (isGuid(CreatedBy)) {
+          createdByVal = CreatedBy;
+        } else if (createdByCol.IS_NULLABLE === 'YES') {
+          createdByVal = null;
+        } else {
+          createdByVal = '00000000-0000-0000-0000-000000000000';
+        }
+      } else {
+        createdByType = sql.VarChar(200);
+        createdByVal = CreatedBy || 'SYSTEM';
+      }
+    }
+
+    const cleanUserId = isGuid(UserId) ? UserId : null;
 
     /* ======================
        UPDATE
     ======================*/
     if (cleanUserId) {
-      await pool.request()
-        .input("UserId", sql.UniqueIdentifier, cleanUserId)
-        .input("UserCode", sql.VarChar(100), UserCode)
-        .input("UserName", sql.VarChar(200), UserName)
-        .input("UserPassword", sql.VarChar(500), finalPassword)
-        .input("UserGroupid", sql.UniqueIdentifier, cleanGroupId)
-        .input("FirstName", sql.VarChar(200), FirstName || null)
-        .input("LastName", sql.VarChar(200), LastName || null)
-        .input("FullName", sql.VarChar(300), FullName || null)
-        .input("NickName", sql.VarChar(200), NickName || null)
-        .input("IdentificationNo", sql.VarChar(100), IdentificationNo || null)
-        .input("CardNumber", sql.VarChar(100), CardNumber || null)
-        .input("AllowedLogins", sql.Int, finalAllowedLogins)
-        .input("isWaiter", sql.Bit, isWaiter ? 1 : 0)
-        .input("IsDisabled", sql.Bit, IsDisabled ? 1 : 0)
-        .input("FromDate", sql.DateTime, FromDate ? new Date(FromDate) : null)
-        .input("ToDate", sql.DateTime, ToDate ? new Date(ToDate) : null)
-        .query(`
-          UPDATE UserMaster SET
-            UserCode=@UserCode,
-            UserName=@UserName,
-            UserPassword=@UserPassword,
-            UserGroupid=@UserGroupid,
-            FirstName=@FirstName,
-            LastName=@LastName,
-            FullName=@FullName,
-            NickName=@NickName,
-            IdentificationNo=@IdentificationNo,
-            CardNumber=@CardNumber,
-            AllowedLogins=@AllowedLogins,
-            isWaiter=@isWaiter,
-            IsDisabled=@IsDisabled,
-            FromDate=@FromDate,
-            ToDate=@ToDate
-          WHERE UserId=@UserId
-        `);
+      const updateFields = [
+        'UserCode=@UserCode',
+        'UserName=@UserName',
+        'UserPassword=@UserPassword'
+      ];
+      const reqBuilder = pool.request();
+      reqBuilder.input('UserId', sql.UniqueIdentifier, cleanUserId);
+      reqBuilder.input('UserCode', sql.VarChar(100), UserCode);
+      reqBuilder.input('UserName', sql.VarChar(200), UserName);
+      reqBuilder.input('UserPassword', sql.VarChar(500), finalPassword);
 
-      return res.json({ message: "User Updated" });
+      if (hasCol('UserGroupid')) {
+        updateFields.push('UserGroupid=@UserGroupid');
+        reqBuilder.input('UserGroupid', groupType, groupVal);
+      }
+      if (hasCol('FirstName')) {
+        updateFields.push('FirstName=@FirstName');
+        reqBuilder.input('FirstName', sql.VarChar(200), FirstName || null);
+      }
+      if (hasCol('LastName')) {
+        updateFields.push('LastName=@LastName');
+        reqBuilder.input('LastName', sql.VarChar(200), LastName || null);
+      }
+      if (hasCol('FullName')) {
+        updateFields.push('FullName=@FullName');
+        reqBuilder.input('FullName', sql.VarChar(300), FullName || null);
+      }
+      if (hasCol('NickName')) {
+        updateFields.push('NickName=@NickName');
+        reqBuilder.input('NickName', sql.VarChar(200), NickName || null);
+      }
+      if (hasCol('IdentificationNo')) {
+        updateFields.push('IdentificationNo=@IdentificationNo');
+        reqBuilder.input('IdentificationNo', sql.VarChar(100), IdentificationNo || null);
+      }
+      if (hasCol('CardNumber')) {
+        updateFields.push('CardNumber=@CardNumber');
+        reqBuilder.input('CardNumber', sql.VarChar(100), CardNumber || null);
+      }
+      if (hasCol('AllowedLogins')) {
+        updateFields.push('AllowedLogins=@AllowedLogins');
+        reqBuilder.input('AllowedLogins', sql.Int, finalAllowedLogins);
+      }
+      if (hasCol('isWaiter')) {
+        updateFields.push('isWaiter=@isWaiter');
+        reqBuilder.input('isWaiter', sql.Bit, isWaiter ? 1 : 0);
+      }
+      if (hasCol('IsDisabled')) {
+        updateFields.push('IsDisabled=@IsDisabled');
+        reqBuilder.input('IsDisabled', sql.Bit, IsDisabled ? 1 : 0);
+      }
+      if (hasCol('FromDate')) {
+        updateFields.push('FromDate=@FromDate');
+        reqBuilder.input('FromDate', sql.DateTime, FromDate ? new Date(FromDate) : null);
+      }
+      if (hasCol('ToDate')) {
+        updateFields.push('ToDate=@ToDate');
+        reqBuilder.input('ToDate', sql.DateTime, ToDate ? new Date(ToDate) : null);
+      }
+
+      await reqBuilder.query(`
+        UPDATE UserMaster SET
+          ${updateFields.join(', ')}
+        WHERE UserId=@UserId
+      `);
+
+      return res.json({ message: 'User Updated' });
     }
 
     /* ======================
        INSERT
     ======================*/
     if (!UserName) {
-      return res.status(400).json({ message: "UserName is required" });
+      return res.status(400).json({ message: 'UserName is required' });
     }
 
     const generateUserCode = () => {
@@ -210,58 +288,104 @@ router.post("/usermaster", async (req, res) => {
     let finalUserCode = UserCode && UserCode.trim() ? UserCode.trim() : generateUserCode();
 
     let existingUser = await pool.request()
-      .input("UserCode", sql.VarChar(50), finalUserCode)
+      .input('UserCode', sql.VarChar(50), finalUserCode)
       .query(`SELECT UserId FROM UserMaster WHERE UserCode = @UserCode`);
 
     while (existingUser.recordset.length) {
       finalUserCode = generateUserCode();
       existingUser = await pool.request()
-        .input("UserCode", sql.VarChar(100), finalUserCode)
+        .input('UserCode', sql.VarChar(100), finalUserCode)
         .query(`SELECT UserId FROM UserMaster WHERE UserCode = @UserCode`);
     }
 
-    await pool.request()
-      .input("UserId", sql.UniqueIdentifier, uuidv4())
-      .input("UserCode", sql.VarChar(100), finalUserCode)
-      .input("UserName", sql.VarChar(200), UserName)
-      .input("UserPassword", sql.VarChar(500), finalPassword)
-      .input("UserGroupid", sql.UniqueIdentifier, cleanGroupId)
-      .input("FirstName", sql.VarChar(200), FirstName || null)
-      .input("LastName", sql.VarChar(200), LastName || null)
-      .input("FullName", sql.VarChar(300), FullName || null)
-      .input("NickName", sql.VarChar(200), NickName || null)
-      .input("IdentificationNo", sql.VarChar(100), IdentificationNo || null)
-      .input("CardNumber", sql.VarChar(100), CardNumber || null)
-      .input("AllowedLogins", sql.Int, finalAllowedLogins)
-      .input("isWaiter", sql.Bit, isWaiter ? 1 : 0)
-      .input("IsDisabled", sql.Bit, IsDisabled ? 1 : 0)
-      .input("CreatedBy", sql.VarChar(200), createdBy)
-      .input("CreatedOn", sql.DateTime, new Date())
-      .input("FromDate", sql.DateTime, FromDate ? new Date(FromDate) : null)
-      .input("ToDate", sql.DateTime, ToDate ? new Date(ToDate) : null)
-      .query(`
-        INSERT INTO UserMaster
-        (
-          UserId,UserCode,UserName,UserPassword,UserGroupid,
-          FirstName,LastName,FullName,NickName,
-          IdentificationNo,CardNumber,AllowedLogins,isWaiter,IsDisabled,
-          FromDate,ToDate,
-          CreatedBy,CreatedOn
-        )
-        VALUES
-        (
-          @UserId,@UserCode,@UserName,@UserPassword,@UserGroupid,
-          @FirstName,@LastName,@FullName,@NickName,
-          @IdentificationNo,@CardNumber,@AllowedLogins,@isWaiter,@IsDisabled,
-          @FromDate,@ToDate,
-          @CreatedBy,GETDATE()
-        )
-      `);
+    const reqBuilder = pool.request();
+    const insertCols = ['UserId', 'UserCode', 'UserName', 'UserPassword'];
+    const insertVals = ['@UserId', '@UserCode', '@UserName', '@UserPassword'];
 
-    res.json({ message: "User Created" });
+    reqBuilder.input('UserId', sql.UniqueIdentifier, uuidv4());
+    reqBuilder.input('UserCode', sql.VarChar(100), finalUserCode);
+    reqBuilder.input('UserName', sql.VarChar(200), UserName);
+    reqBuilder.input('UserPassword', sql.VarChar(500), finalPassword);
+
+    if (hasCol('UserGroupid')) {
+      insertCols.push('UserGroupid');
+      insertVals.push('@UserGroupid');
+      reqBuilder.input('UserGroupid', groupType, groupVal);
+    }
+    if (hasCol('FirstName')) {
+      insertCols.push('FirstName');
+      insertVals.push('@FirstName');
+      reqBuilder.input('FirstName', sql.VarChar(200), FirstName || null);
+    }
+    if (hasCol('LastName')) {
+      insertCols.push('LastName');
+      insertVals.push('@LastName');
+      reqBuilder.input('LastName', sql.VarChar(200), LastName || null);
+    }
+    if (hasCol('FullName')) {
+      insertCols.push('FullName');
+      insertVals.push('@FullName');
+      reqBuilder.input('FullName', sql.VarChar(300), FullName || null);
+    }
+    if (hasCol('NickName')) {
+      insertCols.push('NickName');
+      insertVals.push('@NickName');
+      reqBuilder.input('NickName', sql.VarChar(200), NickName || null);
+    }
+    if (hasCol('IdentificationNo')) {
+      insertCols.push('IdentificationNo');
+      insertVals.push('@IdentificationNo');
+      reqBuilder.input('IdentificationNo', sql.VarChar(100), IdentificationNo || null);
+    }
+    if (hasCol('CardNumber')) {
+      insertCols.push('CardNumber');
+      insertVals.push('@CardNumber');
+      reqBuilder.input('CardNumber', sql.VarChar(100), CardNumber || null);
+    }
+    if (hasCol('AllowedLogins')) {
+      insertCols.push('AllowedLogins');
+      insertVals.push('@AllowedLogins');
+      reqBuilder.input('AllowedLogins', sql.Int, finalAllowedLogins);
+    }
+    if (hasCol('isWaiter')) {
+      insertCols.push('isWaiter');
+      insertVals.push('@isWaiter');
+      reqBuilder.input('isWaiter', sql.Bit, isWaiter ? 1 : 0);
+    }
+    if (hasCol('IsDisabled')) {
+      insertCols.push('IsDisabled');
+      insertVals.push('@IsDisabled');
+      reqBuilder.input('IsDisabled', sql.Bit, IsDisabled ? 1 : 0);
+    }
+    if (hasCol('FromDate')) {
+      insertCols.push('FromDate');
+      insertVals.push('@FromDate');
+      reqBuilder.input('FromDate', sql.DateTime, FromDate ? new Date(FromDate) : null);
+    }
+    if (hasCol('ToDate')) {
+      insertCols.push('ToDate');
+      insertVals.push('@ToDate');
+      reqBuilder.input('ToDate', sql.DateTime, ToDate ? new Date(ToDate) : null);
+    }
+    if (hasCol('CreatedBy')) {
+      insertCols.push('CreatedBy');
+      insertVals.push('@CreatedBy');
+      reqBuilder.input('CreatedBy', createdByType, createdByVal);
+    }
+    if (hasCol('CreatedOn')) {
+      insertCols.push('CreatedOn');
+      insertVals.push('GETDATE()');
+    }
+
+    await reqBuilder.query(`
+      INSERT INTO UserMaster (${insertCols.join(', ')})
+      VALUES (${insertVals.join(', ')})
+    `);
+
+    res.json({ message: 'User Created' });
 
   } catch (err) {
-    console.error("SAVE USER ERROR:", err.message);
+    console.error('SAVE USER ERROR:', err.message);
     res.status(500).send(err.message);
   }
 });
